@@ -1,0 +1,654 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title> EASYEARN | Create Account</title>
+
+<style>
+:root {
+  --primary: #7157f5;
+  --dark: #4d36ce;
+  --text: #22213a;
+  --muted: #85849a;
+  --border: #e8e7f1;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  padding: 24px 14px;
+  display: grid;
+  place-items: center;
+  font-family: Inter, Arial, sans-serif;
+  color: var(--text);
+  background: linear-gradient(135deg, #f0edff, #fdf4ff, #edf3ff);
+  background-size: 200% 200%;
+  animation: backgroundMove 12s ease infinite;
+}
+
+@keyframes backgroundMove {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.card {
+  width: 100%;
+  max-width: 950px;
+  display: grid;
+  grid-template-columns: .9fr 1.1fr;
+  overflow: hidden;
+  background: white;
+  border-radius: 24px;
+  box-shadow: 0 25px 70px #4334a21c;
+  animation: enter .65s ease both;
+}
+
+@keyframes enter {
+  from { opacity: 0; transform: translateY(22px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hero {
+  padding: 42px 32px;
+  color: white;
+  background: linear-gradient(145deg, #8c78ff, #5940d5);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 23px;
+  font-weight: 800;
+}
+
+.brand-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #ffffff25;
+}
+
+.hero-content {
+  margin: 48px 0;
+}
+
+.hero h1 {
+  font-size: clamp(30px, 4vw, 43px);
+  line-height: 1.15;
+  letter-spacing: -1.5px;
+  margin-bottom: 18px;
+}
+
+.hero p {
+  color: #e8e2ff;
+  font-size: 14px;
+  line-height: 1.9;
+}
+
+.features {
+  margin-top: 30px;
+  display: grid;
+  gap: 20px;
+}
+
+.feature {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.feature svg {
+  flex-shrink: 0;
+}
+
+.hero-footer {
+  color: #e0d9ff;
+  font-size: 12px;
+}
+
+.form-side {
+  padding: 42px clamp(22px, 5vw, 55px);
+}
+
+.heading {
+  margin-bottom: 25px;
+}
+
+.heading h2 {
+  font-size: 27px;
+  letter-spacing: -.8px;
+  margin-bottom: 9px;
+}
+
+.heading p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.field {
+  margin-bottom: 16px;
+}
+
+label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  transition: border .2s, box-shadow .2s;
+}
+
+.input-wrap:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px #7157f518;
+}
+
+.input-wrap > svg {
+  color: #9693b0;
+  flex-shrink: 0;
+}
+
+input, select {
+  font: inherit;
+  font-size: 12px;
+}
+
+.input-wrap input {
+  min-width: 0;
+  width: 100%;
+  padding: 13px 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+}
+
+input::placeholder {
+  color: #aaa8bc;
+}
+
+/* Phone input and country selector */
+.phone-wrap {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0 10px;
+  transition: border .2s, box-shadow .2s;
+}
+
+.phone-wrap:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px #7157f518;
+}
+
+.phone-wrap select {
+  max-width: 125px;
+  width: auto;
+  padding: 13px 3px;
+  border: 0;
+  outline: none;
+  background: white;
+  color: #4e4a69;
+  cursor: pointer;
+}
+
+.phone-wrap input {
+  width: 100%;
+  min-width: 0;
+  padding: 13px 7px;
+  border: 0;
+  outline: none;
+}
+
+.phone-divider {
+  height: 25px;
+  width: 1px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.toggle {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: #8985a4;
+  cursor: pointer;
+  padding: 5px;
+}
+
+.toggle:hover {
+  color: var(--primary);
+}
+
+.terms {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 5px 0 20px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: #77758c;
+}
+
+.terms input {
+  margin-top: 3px;
+  accent-color: var(--primary);
+  flex-shrink: 0;
+}
+
+a {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+.submit {
+  width: 100%;
+  padding: 14px;
+  border: 0;
+  border-radius: 10px;
+  background: linear-gradient(100deg, #8670ff, #6349e5);
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-shadow: 0 7px 20px #7157f52b;
+  transition: transform .2s, box-shadow .2s;
+}
+
+.submit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px #7157f545;
+}
+
+.submit:active {
+  transform: translateY(0);
+}
+
+button:focus-visible, a:focus-visible {
+  outline: 3px solid #b6aaff;
+  outline-offset: 3px;
+}
+
+#message {
+  margin-top: 12px;
+  font-size: 12px;
+  text-align: center;
+  line-height: 1.6;
+}
+
+.login {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.security {
+  margin-top: 25px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 7px;
+  color: #9996ac;
+  font-size: 10px;
+}
+
+@media (max-width: 720px) {
+  .card {
+    max-width: 450px;
+    grid-template-columns: 1fr;
+  }
+
+  .hero {
+    padding: 25px;
+  }
+
+  .hero-content {
+    margin: 25px 0 5px;
+  }
+
+  .hero h1 {
+    font-size: 30px;
+  }
+
+  .features, .hero-footer {
+    display: none;
+  }
+
+  .form-side {
+    padding: 30px 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<main class="card">
+
+  <section class="hero">
+    <div class="brand">
+      <span class="brand-icon">
+        <svg width="23" height="23" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" stroke-width="2"
+          aria-hidden="true">
+          <path d="m12 2 2.8 7.2L22 12l-7.2 2.8L12 22l-2.8-7.2L2 12l7.2-2.8L12 2z"/>
+        </svg>
+      </span>
+      EASYEARN
+    </div>
+
+    <div class="hero-content">
+      <h1>Your next chapter to financial freedom starts here.</h1>
+      <p>Create an account and discover a simpler way to connect, grow, and learn.</p>
+
+      <div class="features">
+        <div class="feature">
+          <svg width="20" height="20" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2"
+            aria-hidden="true">
+            <path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11z"/>
+            <path d="m9 12 2 2 4-4"/>
+          </svg>
+          Simple account registration
+        </div>
+
+        <div class="feature">
+          <svg width="20" height="20" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2"
+            aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>
+          Quick and easy setup
+        </div>
+
+        <div class="feature">
+          <svg width="20" height="20" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2"
+            aria-hidden="true">
+            <rect x="3" y="5" width="18" height="14" rx="3"/>
+            <path d="m3 7 9 6 9-6"/>
+          </svg>
+          Connect with confidence
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-footer">© 2026 NiesTech. All rights reserved.</div>
+  </section>
+
+  <section class="form-side">
+    <header class="heading">
+      <h2>Create your account</h2>
+      <p>Fill in your details to get started for free.</p>
+    </header>
+
+    <form id="signupForm">
+      <div class="field">
+        <label for="name">Full name</label>
+        <div class="input-wrap">
+          <svg width="18" height="18" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="1.8"
+            aria-hidden="true">
+            <circle cx="12" cy="8" r="4"/>
+            <path d="M5 21v-2a7 7 0 0 1 14 0v2"/>
+          </svg>
+          <input id="name" name="name" type="text"
+            placeholder="Enter your full name"
+            autocomplete="name" required>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="email">Email address</label>
+        <div class="input-wrap">
+          <svg width="18" height="18" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="1.8"
+            aria-hidden="true">
+            <rect x="3" y="5" width="18" height="14" rx="3"/>
+            <path d="m3 7 9 6 9-6"/>
+          </svg>
+          <input id="email" name="email" type="email"
+            placeholder="you@example.com"
+            autocomplete="email" required>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="phone">Phone number</label>
+        <div class="phone-wrap">
+          <select id="countryCode" aria-label="Country calling code">
+            <option value="+254" selected>🇰🇪 +254</option>
+            <option value="+1">🇺🇸 +1</option>
+            <option value="+44">🇬🇧 +44</option>
+            <option value="+256">🇺🇬 +256</option>
+            <option value="+255">🇹🇿 +255</option>
+            <option value="+250">🇷🇼 +250</option>
+            <option value="+27">🇿🇦 +27</option>
+            <option value="+233">GH +233</option>
+            <option value="+234">🇳🇬 +234</option>
+            <option value="+61">🇦🇺 +61</option>
+          </select>
+          <span class="phone-divider" aria-hidden="true"></span>
+          <input id="phone" name="phone" type="tel"
+            placeholder="712 345 678"
+            autocomplete="tel-national"
+            inputmode="tel" required>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <div class="input-wrap">
+          <svg width="18" height="18" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="1.8"
+            aria-hidden="true">
+            <rect x="4" y="10" width="16" height="11" rx="2"/>
+            <path d="M8 10V7a4 4 0 0 1 8 0v3"/>
+          </svg>
+          <input id="password" name="password" type="password"
+            placeholder="At least 8 characters"
+            autocomplete="new-password" minlength="8" required>
+          <button class="toggle" type="button" data-target="password"
+            aria-label="Show password" aria-pressed="false">
+            <svg width="19" height="19" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" stroke-width="1.8"
+              aria-hidden="true">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="confirmPassword">Confirm password</label>
+        <div class="input-wrap">
+          <svg width="18" height="18" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="1.8"
+            aria-hidden="true">
+            <rect x="4" y="10" width="16" height="11" rx="2"/>
+            <path d="M8 10V7a4 4 0 0 1 8 0v3"/>
+          </svg>
+          <input id="confirmPassword" name="confirmPassword"
+            type="password" placeholder="Enter password again"
+            autocomplete="new-password" minlength="8" required>
+          <button class="toggle" type="button"
+            data-target="confirmPassword"
+            aria-label="Show confirm password" aria-pressed="false">
+            <svg width="19" height="19" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" stroke-width="1.8"
+              aria-hidden="true">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <label class="terms" for="terms">
+        <input id="terms" type="checkbox" required>
+        <span>
+          I agree to the <a href="terms.html">Terms of Service</a>
+          and <a href="privacy.html">Privacy Policy</a>.
+        </span>
+      </label>
+
+      <button class="submit" type="submit">
+        Create account
+        <svg width="18" height="18" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" stroke-width="2"
+          aria-hidden="true">
+          <path d="M5 12h14m-7-7 7 7-7 7"/>
+        </svg>
+      </button>
+
+      <p id="message" role="status" aria-live="polite"></p>
+    </form>
+
+    <p class="login">
+      Already have an account?
+      <a href="login.html">Sign in</a>
+    </p>
+
+    <div class="security">
+      <svg width="14" height="14" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" stroke-width="1.8"
+        aria-hidden="true">
+        <rect x="4" y="10" width="16" height="11" rx="2"/>
+        <path d="M8 10V7a4 4 0 0 1 8 0v3"/>
+      </svg>
+      Your information should be handled securely.
+    </div>
+  </section>
+</main>
+
+<script>
+const form = document.getElementById("signupForm");
+const message = document.getElementById("message");
+const password = document.getElementById("password");
+const confirmPassword = document.getElementById("confirmPassword");
+
+// Show or hide password
+document.querySelectorAll(".toggle").forEach(button => {
+  button.addEventListener("click", () => {
+    const field = document.getElementById(button.dataset.target);
+    const show = field.type === "password";
+
+    field.type = show ? "text" : "password";
+    button.setAttribute("aria-pressed", String(show));
+    button.setAttribute(
+      "aria-label",
+      (show ? "Hide " : "Show ") +
+      (field.id === "password" ? "password" : "confirm password")
+    );
+  });
+});
+
+form.addEventListener("submit", async event => {
+  event.preventDefault();
+  message.style.color = "#d04444";
+  const phone = document.getElementById("phone").value.trim();
+  const countryCode = document.getElementById("countryCode").value;
+  const digits = phone.replace(/[\s().-]/g, "");
+  if (!/^\d+$/.test(digits) || digits.length < 7 || digits.length > 15) {
+    message.textContent = "Please enter a valid phone number.";
+    document.getElementById("phone").focus();
+    return;
+  }
+  if (password.value.length < 8) {
+    message.textContent = "Password must be at least 8 characters.";
+    password.focus();
+    return;
+  }
+  if (password.value !== confirmPassword.value) {
+    message.textContent = "Your passwords do not match.";
+    confirmPassword.focus();
+    return;
+  }
+  if (!form.reportValidity()) return;
+  const submitButton = form.querySelector(".submit");
+  submitButton.disabled = true;
+  submitButton.setAttribute("aria-busy", "true");
+  message.style.color = "#77758c";
+  message.textContent = "Creating your account…";
+  try {
+    const response = await fetch("/api/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: document.getElementById("name").value.trim(),
+        email: document.getElementById("email").value.trim(),
+        phone: countryCode + digits,
+        password: password.value
+      })
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Could not create your account.");
+    form.reset();
+    message.style.color = "#258452";
+    message.textContent = result.message;
+  } catch (error) {
+    message.style.color = "#d04444";
+    message.textContent = error.message === "Failed to fetch"
+      ? "Could not reach the server. Make sure it is running and try again."
+      : error.message;
+  } finally {
+    submitButton.disabled = false;
+    submitButton.removeAttribute("aria-busy");
+  }
+});
+[password, confirmPassword].forEach(field => {
+  field.addEventListener("input", () => {
+    message.textContent = "";
+  });
+});
+</script>
+
+</body>
+</html>
