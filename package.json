@@ -1,0 +1,8 @@
+{
+  "name": "easyearn-signup",
+  "version": "1.0.0",
+  "private": true,
+  "description": "EASYEARN signup demo with Node.js and SQLite",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=22.5.0" }
+}
