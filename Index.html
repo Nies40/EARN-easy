@@ -313,6 +313,10 @@ button:focus-visible, a:focus-visible {
   line-height: 1.6;
 }
 
+[hidden] { display: none !important; }
+.auth-switch { display: flex; gap: 8px; margin: 0 0 22px; }
+.auth-switch button { flex: 1; padding: 10px; border: 1px solid var(--border); border-radius: 9px; background: white; color: var(--muted); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.auth-switch button[aria-pressed="true"] { color: white; border-color: var(--primary); background: var(--primary); }
 .login {
   margin-top: 20px;
   text-align: center;
@@ -428,6 +432,10 @@ button:focus-visible, a:focus-visible {
       <p>Fill in your details to get started for free.</p>
     </header>
 
+    <div class="auth-switch" role="tablist" aria-label="Account options">
+      <button type="button" id="showSignup" role="tab" aria-selected="true" aria-pressed="true">Create account</button>
+      <button type="button" id="showLogin" role="tab" aria-selected="false" aria-pressed="false">Sign in</button>
+    </div>
     <form id="signupForm">
       <div class="field">
         <label for="name">Full name</label>
@@ -442,6 +450,11 @@ button:focus-visible, a:focus-visible {
             placeholder="Enter your full name"
             autocomplete="name" required>
         </div>
+      </div>
+
+      <div class="field">
+        <label for="username">Username</label>
+        <div class="input-wrap"><input id="username" name="username" type="text" placeholder="Choose a username" autocomplete="username" minlength="3" maxlength="30" pattern="[A-Za-z0-9_]+" required></div>
       </div>
 
       <div class="field">
@@ -551,10 +564,24 @@ button:focus-visible, a:focus-visible {
       <p id="message" role="status" aria-live="polite"></p>
     </form>
 
-    <p class="login">
-      Already have an account?
-      <a href="login.html">Sign in</a>
-    </p>
+    <form id="loginForm" hidden>
+      <div class="field">
+        <label for="loginUsername">Username</label>
+        <div class="input-wrap"><input id="loginUsername" name="username" type="text" placeholder="Your username" autocomplete="username" required></div>
+      </div>
+      <div class="field">
+        <label for="loginPassword">Password</label>
+        <div class="input-wrap"><input id="loginPassword" name="password" type="password" placeholder="Your password" autocomplete="current-password" required></div>
+      </div>
+      <button class="submit" type="submit">Sign in</button>
+      <p id="loginMessage" role="status" aria-live="polite"></p>
+    </form>
+
+    <section id="accountPanel" hidden aria-live="polite">
+      <h2 id="accountWelcome">You are signed in.</h2>
+      <p>Your account is ready.</p>
+      <button class="submit" id="logoutButton" type="button" style="margin-top:18px">Sign out</button>
+    </section>
 
     <div class="security">
       <svg width="14" height="14" viewBox="0 0 24 24"
@@ -571,6 +598,48 @@ button:focus-visible, a:focus-visible {
 <script>
 const form = document.getElementById("signupForm");
 const message = document.getElementById("message");
+const loginForm = document.getElementById("loginForm");
+const loginMessage = document.getElementById("loginMessage");
+const signupForm = document.getElementById("signupForm");
+const authSwitch = document.querySelector(".auth-switch");
+const accountPanel = document.getElementById("accountPanel");
+function showAccount(user) {
+  authSwitch.hidden = true;
+  signupForm.hidden = true;
+  loginForm.hidden = true;
+  accountPanel.hidden = false;
+  document.getElementById("accountWelcome").textContent = `Welcome, ${user.name}!`;
+}
+document.getElementById("logoutButton").addEventListener("click", async () => {
+  try {
+    const response = await fetch("/api/logout", { method: "POST" });
+    if (!response.ok) throw new Error("Could not sign out. Please try again.");
+    accountPanel.hidden = true;
+    authSwitch.hidden = false;
+    signupForm.hidden = false;
+    document.getElementById("showSignup").setAttribute("aria-pressed", "true");
+    document.getElementById("showLogin").setAttribute("aria-pressed", "false");
+  } catch (error) {
+    document.getElementById("accountWelcome").textContent = error.message;
+  }
+});
+fetch("/api/me").then(response => response.ok ? response.json() : null)
+  .then(data => { if (data && data.user) showAccount(data.user); }).catch(() => {});
+document.getElementById("showSignup").addEventListener("click", () => { signupForm.hidden = false; loginForm.hidden = true; document.getElementById("showSignup").setAttribute("aria-pressed", "true"); document.getElementById("showLogin").setAttribute("aria-pressed", "false"); });
+document.getElementById("showLogin").addEventListener("click", () => { signupForm.hidden = true; loginForm.hidden = false; document.getElementById("showSignup").setAttribute("aria-pressed", "false"); document.getElementById("showLogin").setAttribute("aria-pressed", "true"); document.getElementById("loginUsername").focus(); });
+loginForm.addEventListener("submit", async event => {
+  event.preventDefault();
+  loginMessage.style.color = "#77758c"; loginMessage.textContent = "Signing in…";
+  const button = loginForm.querySelector(".submit"); button.disabled = true;
+  try {
+    const response = await fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: document.getElementById("loginUsername").value.trim(), password: document.getElementById("loginPassword").value }) });
+    const result = await response.json(); if (!response.ok) throw new Error(result.error || "Sign in failed.");
+    loginMessage.style.color = "#258452"; loginMessage.textContent = result.message || "Signed in successfully.";
+    if (result.user) showAccount(result.user);
+    if (result.redirect) window.location.href = result.redirect;
+  } catch (error) { loginMessage.style.color = "#d04444"; loginMessage.textContent = error.message === "Failed to fetch" ? "Could not reach the server. Make sure it is running and try again." : error.message; }
+  finally { button.disabled = false; }
+});
 const password = document.getElementById("password");
 const confirmPassword = document.getElementById("confirmPassword");
 
@@ -623,6 +692,8 @@ form.addEventListener("submit", async event => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name: document.getElementById("name").value.trim(),
+        username: document.getElementById("username").value.trim(),
+        username: document.getElementById("username").value.trim(),
         email: document.getElementById("email").value.trim(),
         phone: countryCode + digits,
         password: password.value
@@ -633,6 +704,7 @@ form.addEventListener("submit", async event => {
     form.reset();
     message.style.color = "#258452";
     message.textContent = result.message;
+    if (result.user) showAccount(result.user);
   } catch (error) {
     message.style.color = "#d04444";
     message.textContent = error.message === "Failed to fetch"
@@ -652,3 +724,9 @@ form.addEventListener("submit", async event => {
 
 </body>
 </html>
+
+
+
+
+
+
