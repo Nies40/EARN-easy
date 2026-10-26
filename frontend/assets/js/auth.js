@@ -70,6 +70,9 @@ function showAccount(user) {
     document.getElementById("pageDescription").textContent = "You are signed in to Easyearn.";
     document.getElementById("accountWelcome").textContent = `Welcome, ${user.name}!`;
     document.getElementById("accountEmail").textContent = user.email;
+    document.querySelector(".account-note").textContent = user.email_verified
+        ? "Your email is verified."
+        : "Verify your email to unlock dashboard access.";
     setMessage(accountMessage, "");
 }
 

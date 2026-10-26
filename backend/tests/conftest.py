@@ -5,10 +5,11 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
-from app.api.dependencies import get_db
+from app.api.dependencies import get_db, get_email_sender
 from app.core import security
 from app.core.config import Settings
 from app.db.base import Base
+from app.integrations.email import OutgoingEmail
 from app.main import create_app
 
 
@@ -50,13 +51,26 @@ def settings():
 
 
 @pytest.fixture
-def client(db, settings):
+def email_sender():
+    class CapturingEmailSender:
+        def __init__(self):
+            self.messages: list[OutgoingEmail] = []
+
+        def send(self, message: OutgoingEmail) -> None:
+            self.messages.append(message)
+
+    return CapturingEmailSender()
+
+
+@pytest.fixture
+def client(db, settings, email_sender):
     app = create_app(settings)
 
     def override_db():
         yield db
 
     app.dependency_overrides[get_db] = override_db
+    app.dependency_overrides[get_email_sender] = lambda: email_sender
     with TestClient(app) as test_client:
         yield test_client
 

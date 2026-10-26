@@ -5,7 +5,11 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import get_settings
 from app.db.base import Base
-from app.modules.auth.models import UserSession  # noqa: F401
+from app.modules.auth.models import (  # noqa: F401
+    EmailVerificationToken,
+    PasswordResetToken,
+    UserSession,
+)
 from app.modules.users.models import User  # noqa: F401
 
 config = context.config

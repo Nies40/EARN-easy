@@ -14,20 +14,23 @@ This translates the supplied Nies Technologies brief into implementation stages.
 
 ## Complete account features
 
-- [ ] Add real email delivery, verification links, resend flow, and verification enforcement.
-- [ ] Add forgot-password and reset-password pages/API with expiring, single-use tokens.
-- [ ] Revoke active sessions after password reset.
-- [ ] Build a protected dashboard beyond the current account panel.
-- [ ] Define which actions unverified users can access.
+- [x] Add SMTP delivery, verification links, resend flow, and backend verification enforcement.
+- [x] Add forgot-password and reset-password APIs with expiring, single-use tokens.
+- [x] Revoke all account sessions after password reset, including concurrent login sessions.
+- [x] Add a verified-only dashboard API and limit unverified accounts to basic account access.
+- [x] Add PostgreSQL concurrency tests for single use, cooldowns, and password-reset/login races.
+- [ ] Build verification, recovery, and dashboard frontend screens using the API contract.
 
 ## Before public launch
 
 - [ ] Add login/signup/recovery throttling, abuse protection, and a shared limiter for multiple workers.
+- [ ] Replace best-effort background SMTP tasks with durable delivery and automatic retries.
 - [ ] Apply request-size limits and trusted proxy rules at the deployment boundary.
 - [ ] Schedule expired-session and expired-token cleanup.
 - [ ] Add PostgreSQL integration tests to CI alongside the isolated test suite.
 - [ ] Review database roles, production credentials/TLS, indexes, and connection limits.
 - [ ] Configure HTTPS hosting, deployment migrations, backups, and a tested restore procedure.
+- [ ] Register a domain, verify a production email sender, and select a suitable SMTP provider.
 - [ ] Add privacy-conscious logging, monitoring, and operational alerts.
 - [ ] Publish reviewed Terms of Service and Privacy Policy pages; decide how consent is recorded.
 - [ ] Test accessibility and mobile layouts on real browsers/devices.

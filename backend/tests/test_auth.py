@@ -6,7 +6,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
-from app.api.dependencies import get_db
+from app.api.dependencies import get_db, get_email_sender
+from app.core.config import Settings
 from app.core.security import hash_session_token
 from app.main import create_app
 from app.modules.auth.models import UserSession
@@ -177,9 +178,14 @@ def test_database_enforces_email_uniqueness(db):
     db.rollback()
 
 
-def test_production_cookie_is_secure(db, settings, signup_payload):
-    production_settings = settings.model_copy(
-        update={"app_env": "production", "app_url": "https://testserver"}
+def test_production_cookie_is_secure(db, signup_payload, email_sender):
+    production_settings = Settings(
+        _env_file=None,
+        app_env="production",
+        app_url="https://testserver",
+        allowed_hosts=["testserver"],
+        smtp_tls_mode="ssl",
+        smtp_from_email="no-reply@example.org",
     )
     app = create_app(production_settings)
 
@@ -187,6 +193,7 @@ def test_production_cookie_is_secure(db, settings, signup_payload):
         yield db
 
     app.dependency_overrides[get_db] = override_db
+    app.dependency_overrides[get_email_sender] = lambda: email_sender
     with TestClient(app, base_url="https://testserver") as client:
         response = client.post("/api/signup", json=signup_payload)
         assert response.status_code == 201

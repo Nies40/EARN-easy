@@ -5,9 +5,11 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db
 from app.modules.auth.router import router as auth_router
+from app.modules.dashboard.router import router as dashboard_router
 
 router = APIRouter(prefix="/api")
 router.include_router(auth_router)
+router.include_router(dashboard_router)
 
 
 @router.get("/health", tags=["System"])

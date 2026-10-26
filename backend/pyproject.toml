@@ -27,6 +27,7 @@ package = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = ["postgres: requires TEST_DATABASE_URL and an isolated PostgreSQL schema"]
 
 [tool.ruff]
 target-version = "py312"

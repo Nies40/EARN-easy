@@ -20,8 +20,16 @@ def verify_password(password: str, password_hash: str | bytes) -> bool:
 
 
 def generate_session_token() -> str:
-    return secrets.token_urlsafe(32)
+    return generate_account_token()
 
 
 def hash_session_token(token: str) -> str:
+    return hash_account_token(token)
+
+
+def generate_account_token() -> str:
+    return secrets.token_urlsafe(32)
+
+
+def hash_account_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()

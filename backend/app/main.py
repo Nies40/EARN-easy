@@ -11,6 +11,7 @@ from app.api.router import router
 from app.core.config import Settings, get_settings
 from app.core.middleware import SecurityMiddleware
 from app.db.session import create_database_engine, create_session_factory
+from app.integrations.email import SMTPEmailSender
 
 FRONTEND_ROOT = Path(__file__).resolve().parents[2] / "frontend"
 
@@ -36,6 +37,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = settings
     app.state.session_factory = create_session_factory(engine)
+    app.state.email_sender = SMTPEmailSender(settings)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_hosts)
     app.add_middleware(SecurityMiddleware, settings=settings)
     register_error_handlers(app)
