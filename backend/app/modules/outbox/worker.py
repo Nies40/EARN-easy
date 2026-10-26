@@ -121,7 +121,9 @@ class EmailWorker:
             now = self.clock()
             model = EmailVerificationToken if job.purpose == "verification" else PasswordResetToken
             token = db.get(model, job.token_hash)
-            user = db.get(User, job.user_id)
+            user = db.execute(
+                select(User.id, User.email, User.email_verified_at).where(User.id == job.user_id)
+            ).first()
             if (
                 as_utc(job.expires_at) <= now
                 or token is None
@@ -129,7 +131,7 @@ class EmailWorker:
                 or as_utc(token.expires_at) <= now
                 or token.user_id != job.user_id
                 or user is None
-                or (job.purpose == "verification" and user.email_verified)
+                or (job.purpose == "verification" and user.email_verified_at is not None)
             ):
                 retire(job, "discarded", now, "token_inactive")
                 return

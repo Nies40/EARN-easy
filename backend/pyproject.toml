@@ -33,6 +33,7 @@ pythonpath = ["."]
 markers = [
     "postgres: requires TEST_DATABASE_URL and an isolated PostgreSQL schema",
     "redis: requires TEST_REDIS_URL and uses short-lived, uniquely prefixed keys",
+    "dbops: requires TEST_DATABASE_ADMIN_URL and creates disposable databases/roles",
 ]
 
 [tool.ruff]

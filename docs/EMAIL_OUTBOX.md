@@ -2,7 +2,7 @@
 
 Account emails are saved in PostgreSQL in the same transaction as their account/token changes, encrypted with authenticated Fernet encryption, and delivered by a separate Python process. No SMTP call runs in an API request. Redis remains a rate-limiter store, not an email queue.
 
-Sources: `backend/app/modules/outbox/service.py:14`, `backend/app/modules/outbox/models.py:19`, `backend/app/modules/outbox/worker.py:44`, and `backend/app/workers/email.py:20`.
+Sources: `backend/app/modules/outbox/service.py:14`, `backend/app/modules/outbox/models.py:19`, `backend/app/modules/outbox/worker.py:44`, and `backend/app/workers/email.py:21`.
 
 ## Required setup
 
@@ -52,7 +52,7 @@ SMTP acceptance and database acknowledgment cannot be atomic. A crash after acce
 
 Transient SMTP/network failures retry with exponential backoff and bounded random jitter. Permanent recipient/content failures stop immediately; SMTP authentication failures retry to allow configuration recovery, but still have bounded attempts. Error text, payloads, credentials, and recipient addresses are never logged by the worker. Logs identify job UUIDs and constant error codes only.
 
-Defaults in `backend/app/core/config.py:63`:
+Defaults in `backend/app/core/config.py:67`:
 
 - `EMAIL_OUTBOX_KEYS=[]`: required secret ring; first key encrypts new jobs, all keys can decrypt.
 - `EMAIL_WORKER_POLL_SECONDS=1`: idle polling interval.

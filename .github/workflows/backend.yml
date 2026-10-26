@@ -53,6 +53,7 @@ jobs:
       APP_URL: http://localhost:8000
       DATABASE_URL: postgresql+psycopg://easyearn_ci:easyearn_ci_password@127.0.0.1:5432/easyearn_ci
       TEST_DATABASE_URL: postgresql+psycopg://easyearn_ci:easyearn_ci_password@127.0.0.1:5432/easyearn_ci
+      TEST_DATABASE_ADMIN_URL: postgresql://easyearn_ci:easyearn_ci_password@127.0.0.1:5432/postgres
       REDIS_URL: redis://127.0.0.1:6379/0
       TEST_REDIS_URL: redis://127.0.0.1:6379/0
     steps:
@@ -70,6 +71,22 @@ jobs:
           cache-dependency-glob: uv.lock
       - name: Install locked dependencies
         run: uv sync --locked
+      - name: Use matching PostgreSQL client tools from the disposable service
+        env:
+          EASYEARN_CI_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          command -v gpg gpgconf
+          mkdir -p "${RUNNER_TEMP}/pg-bin"
+          for tool in pg_dump pg_restore; do
+            cat > "${RUNNER_TEMP}/pg-bin/${tool}" <<'SH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          exec docker exec -i -e PGPASSWORD "${EASYEARN_CI_POSTGRES_CONTAINER}" "${0##*/}" "$@"
+          SH
+            chmod 700 "${RUNNER_TEMP}/pg-bin/${tool}"
+          done
+          printf 'PG_BIN_DIR=%s\n' "${RUNNER_TEMP}/pg-bin" >> "${GITHUB_ENV}"
+          printf 'EASYEARN_CI_POSTGRES_CONTAINER=%s\n' "${EASYEARN_CI_POSTGRES_CONTAINER}" >> "${GITHUB_ENV}"
       - name: Generate a masked, ephemeral test encryption key
         run: |
           uv run python - <<'PY'

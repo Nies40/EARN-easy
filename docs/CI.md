@@ -12,9 +12,12 @@ Each Python 3.12, 3.13, and 3.14 job uses its own disposable PostgreSQL 17 and R
 - The complete isolated, PostgreSQL, and Redis integration test suite.
 - The worker's aggregate status command.
 - Outbox migration downgrade/upgrade checks against the disposable database only.
+- Restricted API/worker/backup grants and encrypted restore rehearsals in fresh temporary databases.
 - A strict advisory audit of the hashed, pinned runtime dependencies exported from `uv.lock`.
 
 The workflow generates and masks a fresh Fernet key for its own job. Tests also generate their own temporary keys and schemas. The service password in the workflow is an ephemeral test credential, never a production credential. Tests do not send external email.
+
+`TEST_DATABASE_ADMIN_URL` is used only for temporary role/database tests in that disposable service. `PG_BIN_DIR` points to CI wrappers that run the service container's matching `pg_dump`/`pg_restore`, with passwords forwarded through environment variables rather than command arguments. GnuPG runs on the runner host. No production backup or administrator account is used.
 
 ## Workflow security
 

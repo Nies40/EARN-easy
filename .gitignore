@@ -49,6 +49,10 @@ dist/
 .env
 .env.*
 !.env.example
+!.env.*.example
+backups/
+*.dump.gpg
+*.dump.gpg.*.part
 
 # Legacy Node dependencies and local databases
 node_modules/

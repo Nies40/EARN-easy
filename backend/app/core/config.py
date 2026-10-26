@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -21,12 +22,13 @@ BACKEND_ROOT = Path(__file__).resolve().parents[2]
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=BACKEND_ROOT / ".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=BACKEND_ROOT / ".env", env_file_encoding="utf-8", extra="ignore",
+        hide_input_in_errors=True,
     )
 
     app_env: Literal["development", "test", "production"] = "development"
     app_url: AnyHttpUrl = AnyHttpUrl("http://localhost:8000")
-    database_url: PostgresDsn = PostgresDsn(
+    database_url: SecretStr = SecretStr(
         "postgresql+psycopg://easyearn:easyearn_dev_password@localhost:5432/easyearn"
     )
     allowed_hosts: list[str] = ["localhost", "127.0.0.1"]
@@ -37,6 +39,8 @@ class Settings(BaseSettings):
     session_ttl_seconds: int = Field(default=604800, ge=300, le=2592000)
     db_pool_size: int = Field(default=10, ge=1, le=100)
     db_max_overflow: int = Field(default=10, ge=0, le=100)
+    db_connect_timeout_seconds: int = Field(default=5, ge=1, le=60)
+    db_pool_timeout_seconds: int = Field(default=5, ge=1, le=60)
     email_verification_ttl_seconds: int = Field(default=86400, ge=300, le=604800)
     password_reset_ttl_seconds: int = Field(default=1800, ge=300, le=3600)
     auth_email_cooldown_seconds: int = Field(default=60, ge=1, le=3600)
@@ -69,6 +73,17 @@ class Settings(BaseSettings):
     email_cleanup_interval_seconds: int = Field(default=300, ge=1, le=86400)
     email_cleanup_batch_size: int = Field(default=500, ge=1, le=10000)
     email_outbox_retention_seconds: int = Field(default=604800, ge=3600, le=2592000)
+
+    @field_validator("database_url")
+    @classmethod
+    def validate_database_url(cls, value: SecretStr) -> SecretStr:
+        try:
+            url = PostgresDsn(value.get_secret_value())
+        except ValidationError:
+            raise ValueError("DATABASE_URL must use a PostgreSQL psycopg connection URL.") from None
+        if url.scheme != "postgresql+psycopg":
+            raise ValueError("DATABASE_URL must use the postgresql+psycopg driver.")
+        return SecretStr(str(url))
 
     @field_validator("email_outbox_keys")
     @classmethod
@@ -103,8 +118,6 @@ class Settings(BaseSettings):
     def validate_deployment(self) -> "Settings":
         if self.email_retry_max_seconds < self.email_retry_base_seconds:
             raise ValueError("EMAIL_RETRY_MAX_SECONDS must be at least EMAIL_RETRY_BASE_SECONDS.")
-        if self.database_url.scheme != "postgresql+psycopg":
-            raise ValueError("DATABASE_URL must use the postgresql+psycopg driver.")
         if not self.allowed_hosts or "*" in self.allowed_hosts:
             raise ValueError("ALLOWED_HOSTS must list explicit hostnames.")
         if (
@@ -131,4 +144,5 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    path = Path(os.environ.get("EASYEARN_ENV_FILE", BACKEND_ROOT / ".env"))
+    return Settings(_env_file=path if path.is_absolute() else BACKEND_ROOT / path)

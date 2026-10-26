@@ -11,15 +11,15 @@
 
 | Component        | Responsibility                                                                 | Source                                                                                |
 | ---------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
-| App factory      | Wire routes, middleware, database sessions, lifecycle, and public files        | `backend/app/main.py:22`                                                              |
+| App factory      | Wire routes, middleware, database sessions, lifecycle, and public files        | `backend/app/main.py:23`                                                              |
 | API dependencies | Supply request-scoped database sessions and authenticated users                | `backend/app/api/dependencies.py:15`                                                  |
-| Settings         | Read environment configuration and validate deployment settings                | `backend/app/core/config.py:22`                                                       |
+| Settings         | Read environment configuration and validate deployment settings                | `backend/app/core/config.py:23`                                                       |
 | Security helpers | Hash passwords and generate/hash random session tokens                         | `backend/app/core/security.py:7`                                                      |
 | Middleware       | Reject unexpected browser origins; set security and cache headers              | `backend/app/core/middleware.py:8`                                                    |
 | Auth routes      | Translate HTTP requests/responses and set or clear cookies                     | `backend/app/modules/auth/router.py:47`                                               |
 | Auth service     | Register, authenticate, rotate, expire, and revoke sessions                    | `backend/app/modules/auth/service.py:49`                                              |
 | Users            | Define user persistence and identifier queries                                 | `backend/app/modules/users/models.py:10`, `backend/app/modules/users/repository.py:9` |
-| Migrations       | Apply reviewed, versioned schema changes                                       | `backend/migrations/env.py:36`                                                        |
+| Migrations       | Apply reviewed, versioned schema changes                                       | `backend/migrations/env.py:40`                                                        |
 | Frontend         | Render forms, call the API, and update account state safely with `textContent` | `frontend/index.html`, `frontend/assets/js/auth.js`                                   |
 
 ## Request and data flow
@@ -54,6 +54,8 @@ Token operations and login take the user-row lock before mutating tokens or sess
 - `email_outbox`: encrypted message, non-secret key fingerprint, user/purpose/token binding, delivery status, attempt count, retry time, and lease metadata. The terminal-state constraint requires encrypted payload removal. Deleting a user cascades to their jobs.
 - Tables are created by Alembic migrations, **not** by application startup.
 - Connection pools belong to each application process. Account for the sum of all workers' pool sizes when configuring PostgreSQL connection limits.
+
+Production runtime role checks prevent the API/worker from using administrator, owner, DDL, or inherited-role credentials. The worker reads only user identity/email/verification columns, not password hashes. Optional Alembic `DATABASE_ROLE_PREFIX` selects a controlled owner role and reapplies reviewed runtime grants. Separate process environments keep migration/admin/backup credentials out of application processes; database connection URLs are redacted settings values. See [database operations and recovery](DATABASE_OPERATIONS.md) for the explicit provisioning flow and its dedicated-database restrictions.
 
 ## Extension conventions
 

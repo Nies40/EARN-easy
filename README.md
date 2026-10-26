@@ -61,6 +61,7 @@ earn-easy/
 │   │   ├── core/                # Settings, password/token helpers, middleware
 │   │   ├── db/                  # SQLAlchemy metadata and connection pooling
 │   │   ├── integrations/        # Provider-independent SMTP email adapter
+│   │   ├── ops/                 # Explicit role provisioning and encrypted recovery drills
 │   │   ├── modules/
 │   │   │   ├── auth/            # Request schemas, routes, sessions, auth service
 │   │   │   ├── dashboard/       # Verified-account dashboard endpoint
@@ -83,6 +84,7 @@ earn-easy/
 │   ├── ARCHITECTURE.md
 │   ├── AUTHENTICATION.md
 │   ├── CI.md
+│   ├── DATABASE_OPERATIONS.md
 │   ├── EMAIL_OUTBOX.md
 │   ├── RATE_LIMITING.md
 │   └── ROADMAP.md
@@ -93,7 +95,7 @@ See [architecture](docs/ARCHITECTURE.md) for module responsibilities and extensi
 
 ## Configuration
 
-Settings load from `backend/.env`; process environment variables take precedence. Do not commit real credentials. Source: `backend/app/core/config.py:22`.
+Settings load from `backend/.env`; process environment variables take precedence. Do not commit real credentials. Source: `backend/app/core/config.py:23`.
 
 | Variable              | Default                      | Purpose                                                  |
 | --------------------- | ---------------------------- | -------------------------------------------------------- |
@@ -108,7 +110,7 @@ Settings load from `backend/.env`; process environment variables take precedence
 
 When changing the application host or port, update `APP_URL` too. Add a new hostname to `ALLOWED_HOSTS` when needed. No cross-origin frontend is configured.
 
-Account email settings are in `backend/app/core/config.py:40` and `backend/.env.example`:
+Account email settings are in `backend/app/core/config.py:44` and `backend/.env.example`:
 
 - `EMAIL_VERIFICATION_TTL_SECONDS=86400`: verification links last 24 hours.
 - `PASSWORD_RESET_TTL_SECONDS=1800`: reset links last 30 minutes.
@@ -120,9 +122,11 @@ Account email settings are in `backend/app/core/config.py:40` and `backend/.env.
 
 Production requires `SMTP_TLS_MODE=starttls` or `ssl` and a non-placeholder sender address. Select a managed SMTP provider and verify your sending domain before enabling real outbound mail; check that the provider permits your business model.
 
-Authentication limits and Redis connection settings are configurable in `backend/.env.example` and `backend/app/core/config.py:50`. Defaults are a shared 60-second window, endpoint-specific attempt limits, and `REDIS_URL=redis://localhost:6379/0`. Every API worker must use the same Redis database, key prefix, environment, and quota configuration. The app ignores raw forwarded-IP headers; keep `--no-proxy-headers` for direct/local access and configure trusted proxies explicitly for deployment.
+Authentication limits and Redis connection settings are configurable in `backend/.env.example` and `backend/app/core/config.py:54`. Defaults are a shared 60-second window, endpoint-specific attempt limits, and `REDIS_URL=redis://localhost:6379/0`. Every API worker must use the same Redis database, key prefix, environment, and quota configuration. The app ignores raw forwarded-IP headers; keep `--no-proxy-headers` for direct/local access and configure trusted proxies explicitly for deployment.
 
 `MAX_REQUEST_BODY_BYTES=20480` caps API bodies, including streamed requests, before JSON validation or SQL. Oversized requests receive `413`. This does not replace proxy connection, concurrency, or slow-request timeouts. `EMAIL_OUTBOX_KEYS` is required at API/delivery-worker startup; the other worker settings and defaults are documented in [email operations](docs/EMAIL_OUTBOX.md).
+
+The Compose database account remains a local bootstrap administrator. For production, follow [database roles and recovery operations](docs/DATABASE_OPERATIONS.md): use distinct API, worker, migration, and backup credentials. Production API/worker startup rejects admin/DDL privileges, ownership, role memberships, and missing/excessive grants. Database URLs and configuration-validation inputs are redacted. Connection and pool acquisition waits default to five seconds each, configurable with `DB_CONNECT_TIMEOUT_SECONDS` and `DB_POOL_TIMEOUT_SECONDS`.
 
 ## API
 
@@ -153,17 +157,18 @@ uv run ruff format --check .
 uv run alembic check
 ```
 
-Most tests use an isolated in-memory SQLite database, capture messages through an explicitly invoked test worker, and inject a Redis test double (`backend/tests/conftest.py:35`). Tests generate temporary encryption keys in their own process; the application has no fallback key or process-local quota fallback. PostgreSQL tests skip unless `TEST_DATABASE_URL` is explicitly set, and live Redis tests skip unless `TEST_REDIS_URL` is set. Run the integration checks against local development services:
+Most tests use an isolated in-memory SQLite database, capture messages through an explicitly invoked test worker, and inject a Redis test double (`backend/tests/conftest.py:35`). Tests generate temporary encryption keys in their own process; the application has no fallback key or process-local quota fallback. PostgreSQL tests use `TEST_DATABASE_URL`, live Redis tests use `TEST_REDIS_URL`, and disposable database/role/recovery drills additionally require an explicit `TEST_DATABASE_ADMIN_URL`. Unconfigured integration groups skip. Run against local development services only:
 
 ```bash
 TEST_DATABASE_URL=postgresql+psycopg://easyearn:easyearn_dev_password@localhost:5432/easyearn \
+TEST_DATABASE_ADMIN_URL=postgresql://easyearn:easyearn_dev_password@localhost:5432/postgres \
 TEST_REDIS_URL=redis://localhost:6379/0 \
 uv run pytest tests/integration -q
 ```
 
 The PostgreSQL fixture creates a uniquely named schema per test and drops only that schema afterward; its database role needs schema-creation permission (`backend/tests/integration/conftest.py:14`). Redis tests use uniquely prefixed, short-lived keys and never flush a database. Never use production credentials for tests. `alembic check` separately requires a running, migrated PostgreSQL database and checks for model/schema drift.
 
-GitHub Actions is configured to run the backend checks on Python 3.12–3.14 with disposable PostgreSQL/Redis services, migration round trips, and a strict runtime-dependency advisory audit. Actions are commit-pinned and use no production secrets. See [CI and dependency security](docs/CI.md) for local audit commands and the branch-protection setup still needed after the first hosted run.
+GitHub Actions is configured to run the backend checks on Python 3.12–3.14 with disposable PostgreSQL/Redis services, migration round trips, least-privilege role checks, encrypted recovery rehearsals, and a strict runtime-dependency advisory audit. Actions are commit-pinned and use no production secrets. See [CI and dependency security](docs/CI.md) for local audit commands and the branch-protection setup still needed after the first hosted run.
 
 Create a migration after changing models:
 
@@ -181,7 +186,7 @@ uv run alembic upgrade head
 - Dashboard access requires verified email. Resetting a password revokes every session for that account and does not mark email verified or automatically sign in.
 - Authentication mutations have Redis-backed per-network quotas, body-size limits, and per-account email cooldowns. Tune quotas and add perimeter protection; these are not complete DDoS protection.
 - SMTP uses a transactional encrypted outbox with bounded retries and crash recovery. Delivery is at-least-once, not exactly-once; duplicate messages are possible after an ambiguous SMTP outcome. Sensitive payloads are erased on terminal states. A supervised worker is required for delivery and periodic cleanup.
-- Production deployment, backup/restore testing, required hosted CI checks, key management, monitoring, and a deployment-specific security review remain launch requirements.
+- Encrypted backup/recovery tools and restricted-role tests are implemented. Provisioning real roles, monitored backup schedules/off-site storage, actual recovery drills, production deployment, required hosted CI checks, key management, monitoring, and a deployment-specific security review remain launch requirements.
 - The retained Terms and Privacy links do not have published pages yet. Publish reviewed policies before accepting real registrations.
 - The previous Node/SQLite prototype has been replaced. No legacy account data is automatically migrated.
 

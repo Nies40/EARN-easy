@@ -2,7 +2,7 @@
 
 Authentication attempt quotas use Redis and apply across all FastAPI workers. The backend uses no in-memory fallback, and no domain or external provider is needed locally. PostgreSQL remains the store for users, sessions, verification tokens, and password resets; Redis stores only expiring counters.
 
-Sources: `backend/app/api/rate_limit.py:30`, `backend/app/core/rate_limit.py:63`, and `backend/app/core/config.py:50`.
+Sources: `backend/app/api/rate_limit.py:30`, `backend/app/core/rate_limit.py:63`, and `backend/app/core/config.py:54`.
 
 ## Default quotas
 

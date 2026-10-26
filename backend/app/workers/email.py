@@ -9,6 +9,7 @@ from cryptography.fernet import Fernet
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.config import get_settings
+from app.db.permissions import check_runtime_database_role
 from app.db.session import create_database_engine, create_session_factory
 from app.integrations.email import SMTPEmailSender
 from app.modules.outbox.maintenance import cleanup, status
@@ -38,6 +39,8 @@ def main(argv: list[str] | None = None) -> int:
     engine = create_database_engine(settings)
     factory = create_session_factory(engine)
     try:
+        if settings.is_production:
+            check_runtime_database_role(engine, "worker")
         if args.status or args.cleanup:
             with factory() as db:
                 print(json.dumps(status(db) if args.status else cleanup(db, settings)))

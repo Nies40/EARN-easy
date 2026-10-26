@@ -33,7 +33,10 @@ This translates the supplied Nies Technologies brief into implementation stages.
 - [ ] Apply request-size/time/concurrency limits and trusted proxy rules at the deployment boundary.
 - [x] Configure commit-pinned GitHub CI for Python 3.12–3.14, live services, migrations, and advisory scans.
 - [ ] Push and verify the hosted workflow, then require its checks through branch protection.
-- [ ] Review database roles, production credentials/TLS, indexes, and connection limits.
+- [x] Implement restricted database-role provisioning, runtime checks, and separate environment profiles.
+- [x] Implement encrypted logical backups and non-destructive restore rehearsals with auth invalidation.
+- [ ] Provision actual production roles, verify TLS/network boundaries, and review index/connection budgets.
+- [ ] Configure monitored backup schedules, retention/off-site storage, and repeated deployment recovery drills.
 - [ ] Configure HTTPS hosting, deployment migrations, backups, and a tested restore procedure.
 - [ ] Register a domain, verify a production email sender, and select a suitable SMTP provider.
 - [ ] Add privacy-conscious logging, monitoring, and operational alerts.

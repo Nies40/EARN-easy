@@ -179,7 +179,9 @@ def test_database_enforces_email_uniqueness(db):
     db.rollback()
 
 
-def test_production_cookie_is_secure(db, signup_payload, email_sender, redis_client):
+def test_production_cookie_is_secure(db, signup_payload, email_sender, redis_client, monkeypatch):
+    # This unit test uses SQLite; real PostgreSQL role checks have integration coverage.
+    monkeypatch.setattr("app.main.check_runtime_database_role", lambda *_args: None)
     production_settings = Settings(
         _env_file=None,
         app_env="production",

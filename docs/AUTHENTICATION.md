@@ -96,7 +96,7 @@ Templates: `backend/app/modules/auth/emails.py:7`.
 
 Run `docker compose up -d db mailpit redis` from the repository root, configure `EMAIL_OUTBOX_KEYS`, apply migrations, and start both FastAPI and the separate email worker as described in the [README](../README.md). Mailpit listens for SMTP on `localhost:1025`; its inbox is at <http://localhost:8025>. No domain, external credentials, or provider account is required. Both Python processes run on the host, so the default SMTP hostname is `localhost`.
 
-Defaults are a 24-hour verification lifetime, a 30-minute reset lifetime, and a 60-second per-purpose email cooldown. Lifetimes start at request time, not delivery time. All are configurable in `backend/.env.example`; settings are validated in `backend/app/core/config.py:40`.
+Defaults are a 24-hour verification lifetime, a 30-minute reset lifetime, and a 60-second per-purpose email cooldown. Lifetimes start at request time, not delivery time. All are configurable in `backend/.env.example`; settings are validated in `backend/app/core/config.py:44`.
 
 With PostgreSQL and Redis available, account creation atomically queues an encrypted message even if SMTP or the worker is unavailable. The worker retries transient failures and discards inactive/expired links. A `202` response acknowledges queueing, not SMTP acceptance or inbox delivery. Permanent/exhausted failures require a new request after the cooldown. Restarts preserve jobs; ambiguous SMTP outcomes can produce duplicate messages with the same single-use link. See [delivery operations](EMAIL_OUTBOX.md) for key configuration, retry policy, and monitoring.
 

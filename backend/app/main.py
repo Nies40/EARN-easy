@@ -13,6 +13,7 @@ from app.core.body_limit import RequestBodyLimitMiddleware
 from app.core.config import Settings, get_settings
 from app.core.middleware import SecurityMiddleware
 from app.core.rate_limit import RateLimiter, RedisRateLimiter
+from app.db.permissions import check_runtime_database_role
 from app.db.session import create_database_engine, create_session_factory
 from app.modules.outbox.crypto import EmailPayloadCipher
 
@@ -30,6 +31,8 @@ def create_app(
     async def lifespan(_app: FastAPI):
         try:
             EmailPayloadCipher(settings)
+            if settings.is_production:
+                check_runtime_database_role(engine, "api")
             yield
         finally:
             try:
