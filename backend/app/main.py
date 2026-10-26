@@ -7,25 +7,33 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.errors import register_error_handlers
+from app.api.rate_limit import AuthRateLimitMiddleware
 from app.api.router import router
 from app.core.config import Settings, get_settings
 from app.core.middleware import SecurityMiddleware
+from app.core.rate_limit import RateLimiter, RedisRateLimiter
 from app.db.session import create_database_engine, create_session_factory
 from app.integrations.email import SMTPEmailSender
 
 FRONTEND_ROOT = Path(__file__).resolve().parents[2] / "frontend"
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None, *, rate_limiter: RateLimiter | None = None
+) -> FastAPI:
     settings = settings or get_settings()
     engine = create_database_engine(settings)
+    limiter = rate_limiter if rate_limiter is not None else RedisRateLimiter(settings)
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
         try:
             yield
         finally:
-            engine.dispose()
+            try:
+                await limiter.aclose()
+            finally:
+                engine.dispose()
 
     app = FastAPI(
         title="Easyearn API",
@@ -38,6 +46,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.session_factory = create_session_factory(engine)
     app.state.email_sender = SMTPEmailSender(settings)
+    app.state.rate_limiter = limiter
+    app.add_middleware(AuthRateLimitMiddleware, settings=settings, limiter=limiter)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_hosts)
     app.add_middleware(SecurityMiddleware, settings=settings)
     register_error_handlers(app)

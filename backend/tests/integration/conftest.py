@@ -7,6 +7,7 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.schema import CreateSchema, DropSchema
 
+from app.core.config import Settings
 from app.db.base import Base
 
 
@@ -29,3 +30,18 @@ def pg_factory():
         with engine.begin() as connection:
             connection.execute(DropSchema(schema, cascade=True))
         engine.dispose()
+
+
+@pytest.fixture
+def redis_settings():
+    url = os.environ.get("TEST_REDIS_URL")
+    if not url:
+        pytest.skip("Set TEST_REDIS_URL to run Redis integration tests.")
+    return Settings(
+        _env_file=None,
+        app_env="test",
+        redis_url=url,
+        redis_timeout_seconds=2,
+        auth_rate_limit_key_prefix=f"easyearn-test-{uuid4().hex}",
+        auth_rate_limit_window_seconds=2,
+    )

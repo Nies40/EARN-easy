@@ -7,7 +7,10 @@ from pydantic import (
     EmailStr,
     Field,
     PostgresDsn,
+    RedisDsn,
     SecretStr,
+    ValidationError,
+    field_validator,
     model_validator,
 )
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -42,6 +45,32 @@ class Settings(BaseSettings):
     smtp_password: SecretStr | None = None
     smtp_from_email: EmailStr = "no-reply@example.com"
     smtp_timeout_seconds: int = Field(default=10, ge=1, le=60)
+    redis_url: SecretStr = SecretStr("redis://localhost:6379/0")
+    redis_timeout_seconds: float = Field(default=0.5, gt=0, le=10)
+    redis_max_connections: int = Field(default=20, ge=1, le=1000)
+    auth_rate_limit_key_prefix: str = Field(
+        default="easyearn:auth-limits", pattern=r"^[A-Za-z0-9:_-]{1,80}$"
+    )
+    auth_rate_limit_window_seconds: int = Field(default=60, ge=1, le=3600)
+    auth_rate_limit_signup: int = Field(default=5, ge=1, le=10000)
+    auth_rate_limit_login: int = Field(default=10, ge=1, le=10000)
+    auth_rate_limit_verification_request: int = Field(default=5, ge=1, le=10000)
+    auth_rate_limit_verification_confirm: int = Field(default=20, ge=1, le=10000)
+    auth_rate_limit_password_forgot: int = Field(default=5, ge=1, le=10000)
+    auth_rate_limit_password_reset: int = Field(default=10, ge=1, le=10000)
+
+    @field_validator("redis_url")
+    @classmethod
+    def validate_redis_url(cls, value: SecretStr) -> SecretStr:
+        try:
+            url = RedisDsn(value.get_secret_value())
+        except ValidationError:
+            raise ValueError("REDIS_URL must be a redis:// or rediss:// URL.") from None
+        if url.query or url.fragment:
+            raise ValueError("REDIS_URL must not contain query parameters or a fragment.")
+        if url.path and not url.path.removeprefix("/").isdigit():
+            raise ValueError("REDIS_URL must specify a nonnegative database number.")
+        return SecretStr(str(url))
 
     @property
     def is_production(self) -> bool:

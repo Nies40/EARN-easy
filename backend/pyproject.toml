@@ -10,6 +10,7 @@ dependencies = [
     "fastapi>=0.115,<1",
     "psycopg[binary]>=3.2,<4",
     "pydantic-settings>=2.7,<3",
+    "redis>=5.2,<9",
     "sqlalchemy>=2.0,<3",
     "uvicorn[standard]>=0.34,<1",
 ]
@@ -27,7 +28,10 @@ package = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-markers = ["postgres: requires TEST_DATABASE_URL and an isolated PostgreSQL schema"]
+markers = [
+    "postgres: requires TEST_DATABASE_URL and an isolated PostgreSQL schema",
+    "redis: requires TEST_REDIS_URL and uses short-lived, uniquely prefixed keys",
+]
 
 [tool.ruff]
 target-version = "py312"

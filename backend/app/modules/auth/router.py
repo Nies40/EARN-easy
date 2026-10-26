@@ -2,6 +2,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request,
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_app_settings, get_current_user, get_db, get_email_sender
+from app.api.rate_limit import RATE_LIMIT_RESPONSES
 from app.core.config import Settings
 from app.integrations.email import EmailSender, deliver_email
 from app.modules.auth import service
@@ -44,7 +45,9 @@ def _clear_session_cookie(response: Response, settings: Settings) -> None:
     )
 
 
-@router.post("/signup", response_model=AuthResponse, status_code=201)
+@router.post(
+    "/signup", response_model=AuthResponse, status_code=201, responses=RATE_LIMIT_RESPONSES
+)
 def signup(
     payload: SignupRequest,
     request: Request,
@@ -69,7 +72,7 @@ def signup(
     )
 
 
-@router.post("/login", response_model=AuthResponse)
+@router.post("/login", response_model=AuthResponse, responses=RATE_LIMIT_RESPONSES)
 def login(
     payload: LoginRequest,
     request: Request,
@@ -110,7 +113,12 @@ def logout(
     return MessageResponse(message="Signed out.")
 
 
-@router.post("/email-verification/request", response_model=MessageResponse, status_code=202)
+@router.post(
+    "/email-verification/request",
+    response_model=MessageResponse,
+    status_code=202,
+    responses=RATE_LIMIT_RESPONSES,
+)
 def request_verification(
     background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
@@ -131,7 +139,9 @@ def request_verification(
     return MessageResponse(message="If verification is needed, an email has been requested.")
 
 
-@router.post("/email-verification/confirm", response_model=MessageResponse)
+@router.post(
+    "/email-verification/confirm", response_model=MessageResponse, responses=RATE_LIMIT_RESPONSES
+)
 def confirm_verification(payload: TokenRequest, db: Session = Depends(get_db)) -> MessageResponse:
     try:
         service.confirm_verification(db, payload.token)
@@ -142,7 +152,12 @@ def confirm_verification(payload: TokenRequest, db: Session = Depends(get_db)) -
     return MessageResponse(message="Email verified. Your account can now access the dashboard.")
 
 
-@router.post("/password/forgot", response_model=MessageResponse, status_code=202)
+@router.post(
+    "/password/forgot",
+    response_model=MessageResponse,
+    status_code=202,
+    responses=RATE_LIMIT_RESPONSES,
+)
 def forgot_password(
     payload: EmailRequest,
     background_tasks: BackgroundTasks,
@@ -158,7 +173,7 @@ def forgot_password(
     )
 
 
-@router.post("/password/reset", response_model=MessageResponse)
+@router.post("/password/reset", response_model=MessageResponse, responses=RATE_LIMIT_RESPONSES)
 def reset_password(
     payload: PasswordResetRequest,
     response: Response,

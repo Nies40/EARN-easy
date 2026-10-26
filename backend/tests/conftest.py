@@ -1,6 +1,9 @@
+from unittest.mock import AsyncMock, Mock
+
 import bcrypt
 import pytest
 from fastapi.testclient import TestClient
+from redis.asyncio import Redis
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
@@ -8,6 +11,7 @@ from sqlalchemy.pool import StaticPool
 from app.api.dependencies import get_db, get_email_sender
 from app.core import security
 from app.core.config import Settings
+from app.core.rate_limit import RedisRateLimiter
 from app.db.base import Base
 from app.integrations.email import OutgoingEmail
 from app.main import create_app
@@ -63,15 +67,28 @@ def email_sender():
 
 
 @pytest.fixture
-def client(db, settings, email_sender):
-    app = create_app(settings)
+def redis_client():
+    client = Mock(spec=Redis)
+    client.eval = AsyncMock(return_value=[1, 60000])
+    client.aclose = AsyncMock()
+    return client
+
+
+@pytest.fixture
+def rate_limiter(settings, redis_client):
+    return RedisRateLimiter(settings, client=redis_client)
+
+
+@pytest.fixture
+def client(db, settings, email_sender, rate_limiter):
+    app = create_app(settings, rate_limiter=rate_limiter)
 
     def override_db():
         yield db
 
     app.dependency_overrides[get_db] = override_db
     app.dependency_overrides[get_email_sender] = lambda: email_sender
-    with TestClient(app) as test_client:
+    with TestClient(app, client=("127.0.0.1", 50000)) as test_client:
         yield test_client
 
 

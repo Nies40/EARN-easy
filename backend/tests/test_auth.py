@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.api.dependencies import get_db, get_email_sender
 from app.core.config import Settings
+from app.core.rate_limit import RedisRateLimiter
 from app.core.security import hash_session_token
 from app.main import create_app
 from app.modules.auth.models import UserSession
@@ -178,7 +179,7 @@ def test_database_enforces_email_uniqueness(db):
     db.rollback()
 
 
-def test_production_cookie_is_secure(db, signup_payload, email_sender):
+def test_production_cookie_is_secure(db, signup_payload, email_sender, redis_client):
     production_settings = Settings(
         _env_file=None,
         app_env="production",
@@ -187,14 +188,17 @@ def test_production_cookie_is_secure(db, signup_payload, email_sender):
         smtp_tls_mode="ssl",
         smtp_from_email="no-reply@example.org",
     )
-    app = create_app(production_settings)
+    app = create_app(
+        production_settings,
+        rate_limiter=RedisRateLimiter(production_settings, client=redis_client),
+    )
 
     def override_db():
         yield db
 
     app.dependency_overrides[get_db] = override_db
     app.dependency_overrides[get_email_sender] = lambda: email_sender
-    with TestClient(app, base_url="https://testserver") as client:
+    with TestClient(app, base_url="https://testserver", client=("127.0.0.1", 50000)) as client:
         response = client.post("/api/signup", json=signup_payload)
         assert response.status_code == 201
         assert "Secure" in response.headers["set-cookie"]
