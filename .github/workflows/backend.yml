@@ -1,0 +1,108 @@
+name: Backend checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Python ${{ matrix.python }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13", "3.14"]
+    defaults:
+      run:
+        working-directory: backend
+        shell: bash
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: easyearn_ci
+          POSTGRES_USER: easyearn_ci
+          POSTGRES_PASSWORD: easyearn_ci_password
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd "pg_isready -U easyearn_ci -d easyearn_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - "6379:6379"
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      APP_ENV: test
+      APP_URL: http://localhost:8000
+      DATABASE_URL: postgresql+psycopg://easyearn_ci:easyearn_ci_password@127.0.0.1:5432/easyearn_ci
+      TEST_DATABASE_URL: postgresql+psycopg://easyearn_ci:easyearn_ci_password@127.0.0.1:5432/easyearn_ci
+      REDIS_URL: redis://127.0.0.1:6379/0
+      TEST_REDIS_URL: redis://127.0.0.1:6379/0
+    steps:
+      - name: Check out source without persisting credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned uv and select Python
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: "0.13.5"
+          python-version: ${{ matrix.python }}
+          working-directory: backend
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Install locked dependencies
+        run: uv sync --locked
+      - name: Generate a masked, ephemeral test encryption key
+        run: |
+          uv run python - <<'PY'
+          import json
+          import os
+          from cryptography.fernet import Fernet
+
+          key = Fernet.generate_key().decode("ascii")
+          print(f"::add-mask::{key}")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as output:
+              output.write("EMAIL_OUTBOX_KEYS=" + json.dumps([key]) + "\n")
+          PY
+      - name: Lint backend
+        run: uv run ruff check .
+      - name: Apply database migrations
+        run: uv run alembic upgrade head
+      - name: Check model and migration agreement
+        run: uv run alembic check
+      - name: Run isolated and live PostgreSQL/Redis integration tests
+        run: uv run pytest -q
+      - name: Exercise worker status command
+        run: uv run python -m app.workers.email --status
+      - name: Check outbox migration rollback and upgrade on the disposable database
+        run: |
+          uv run alembic downgrade 0002
+          uv run alembic upgrade head
+          uv run alembic check
+      - name: Export locked runtime dependencies
+        run: >-
+          uv export --locked --no-dev --no-emit-project
+          --format requirements.txt
+          --output-file "${RUNNER_TEMP}/easyearn-runtime.txt"
+      - name: Audit locked runtime dependencies against published advisories
+        run: >-
+          uv run pip-audit --strict --require-hashes --disable-pip --progress-spinner off
+          --requirement "${RUNNER_TEMP}/easyearn-runtime.txt"

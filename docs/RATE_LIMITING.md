@@ -2,7 +2,7 @@
 
 Authentication attempt quotas use Redis and apply across all FastAPI workers. The backend uses no in-memory fallback, and no domain or external provider is needed locally. PostgreSQL remains the store for users, sessions, verification tokens, and password resets; Redis stores only expiring counters.
 
-Sources: `backend/app/api/rate_limit.py:30`, `backend/app/core/rate_limit.py:63`, and `backend/app/core/config.py:48`.
+Sources: `backend/app/api/rate_limit.py:30`, `backend/app/core/rate_limit.py:63`, and `backend/app/core/config.py:50`.
 
 ## Default quotas
 
@@ -95,4 +95,4 @@ They exercise shared quotas across independent application instances, atomic con
 
 ## Remaining launch work
 
-Rate limiting is one abuse-control layer, not complete DDoS protection or a defense against all distributed credential attacks. Add deployment request-size/concurrency limits, traffic monitoring, appropriately tuned quotas, and perimeter protection. Durable email delivery/retries, expired-record cleanup, backups, and the other [launch requirements](ROADMAP.md) remain pending.
+Rate limiting is one abuse-control layer, not complete DDoS protection or a defense against all distributed credential attacks. The app also caps API bodies at `MAX_REQUEST_BODY_BYTES`; add deployment-level size, concurrency, and slow-request limits, traffic monitoring, tuned quotas, and perimeter protection. The [durable email worker](EMAIL_OUTBOX.md) now provides retries and expired-record cleanup, but must be supervised. Backups and the other [launch requirements](ROADMAP.md) remain pending.

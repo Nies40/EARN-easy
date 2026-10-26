@@ -26,10 +26,13 @@ This translates the supplied Nies Technologies brief into implementation stages.
 - [x] Add shared Redis-backed attempt limits for login, signup, verification, and password recovery.
 - [x] Test concurrent quotas, client-IP spoofing defenses, expiry, and fail-closed Redis outages.
 - [ ] Tune quotas for real traffic and add monitoring/perimeter protection against distributed abuse.
-- [ ] Replace best-effort background SMTP tasks with durable delivery and automatic retries.
-- [ ] Apply request-size limits and trusted proxy rules at the deployment boundary.
-- [ ] Schedule expired-session and expired-token cleanup.
-- [ ] Add PostgreSQL integration tests to CI alongside the isolated test suite.
+- [x] Replace background SMTP tasks with an encrypted transactional outbox and recoverable worker.
+- [x] Add bounded retries, terminal payload removal, key rotation support, and queue status.
+- [x] Cap API body bytes, including streamed or underreported bodies, before validation.
+- [x] Run bounded expired-session/token/job cleanup through the supervised delivery worker.
+- [ ] Apply request-size/time/concurrency limits and trusted proxy rules at the deployment boundary.
+- [x] Configure commit-pinned GitHub CI for Python 3.12–3.14, live services, migrations, and advisory scans.
+- [ ] Push and verify the hosted workflow, then require its checks through branch protection.
 - [ ] Review database roles, production credentials/TLS, indexes, and connection limits.
 - [ ] Configure HTTPS hosting, deployment migrations, backups, and a tested restore procedure.
 - [ ] Register a domain, verify a production email sender, and select a suitable SMTP provider.

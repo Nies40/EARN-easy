@@ -2,7 +2,7 @@
 
 The frontend and FastAPI API share one origin. Use cookie authentication, not browser-stored JWTs. API request bodies are JSON; cookies are issued only by signup/login and cleared by logout or successful password reset.
 
-Sources: `backend/app/modules/auth/router.py:48`, `backend/app/modules/auth/schemas.py:37`, and `backend/app/modules/dashboard/router.py:12`. Development also exposes interactive schemas at `/docs`.
+Sources: `backend/app/modules/auth/router.py:47`, `backend/app/modules/auth/schemas.py:37`, and `backend/app/modules/dashboard/router.py:12`. Development also exposes interactive schemas at `/docs`.
 
 ## Account access
 
@@ -12,13 +12,15 @@ Sources: `backend/app/modules/auth/router.py:48`, `backend/app/modules/auth/sche
 - `users.email_verified_at` is the source of truth. API responses expose the derived boolean `user.email_verified`.
 - Unauthenticated protected requests return `401`; authenticated but unverified dashboard requests return `403`.
 
-Access dependencies: `backend/app/api/dependencies.py:25`.
+Access dependencies: `backend/app/api/dependencies.py:20`.
 
 ## Shared attempt limits
 
 Signup, login, verification request/confirmation, and password forgot/reset POST endpoints have shared Redis-backed per-network limits, applied before body validation or database access. Successful, failed, and malformed attempts all count. Exhausted quotas return `429` with `Retry-After` in whole seconds. Redis failures return `503` with `Retry-After: 5`; the server does not silently disable protection. Logout, account reads, and dashboard reads do not depend on Redis.
 
 The existing per-account email cooldowns remain independent of these quotas. The generic forgot-password response described below applies when the network quota is available; an exhausted client network receives the same `429` regardless of whether an email exists. See [rate limiting](RATE_LIMITING.md) for configuration and trusted-proxy requirements.
+
+API bodies are capped at 20 KiB by default (`MAX_REQUEST_BODY_BYTES`), including chunked requests. Oversized bodies return `413` before JSON validation or SQL access. Invalid/duplicate `Content-Length` headers return `400` when they reach the app; the HTTP server may reject malformed framing earlier.
 
 ## Registration and sessions
 
@@ -73,7 +75,7 @@ It returns the same `202` status and `message` for known, unknown, and cooldown-
 
 It returns `200` with `message` after atomically consuming the token, changing the bcrypt hash, and revoking every session belonging to that account. The response clears the caller's authentication cookie. No automatic login occurs; sign in again with the new password. Resetting a password does not mark email verified. Invalid or expired tokens return `400`; invalid passwords return `422` without consuming the token.
 
-Transactions and row locking: `backend/app/modules/auth/service.py:118` and `backend/app/modules/auth/tokens.py:49`.
+Transactions and row locking: `backend/app/modules/auth/service.py:122` and `backend/app/modules/auth/tokens.py:49`.
 
 ## Frontend handoff
 
@@ -92,11 +94,11 @@ Templates: `backend/app/modules/auth/emails.py:7`.
 
 ## Local email configuration
 
-Run `docker compose up -d db mailpit redis` from the repository root, apply migrations, and start FastAPI as described in the [README](../README.md). Mailpit listens for SMTP on `localhost:1025`; its inbox is at <http://localhost:8025>. No domain, external credentials, or provider account is required. The API runs on the host, not inside Compose, so the default SMTP hostname is `localhost`.
+Run `docker compose up -d db mailpit redis` from the repository root, configure `EMAIL_OUTBOX_KEYS`, apply migrations, and start both FastAPI and the separate email worker as described in the [README](../README.md). Mailpit listens for SMTP on `localhost:1025`; its inbox is at <http://localhost:8025>. No domain, external credentials, or provider account is required. Both Python processes run on the host, so the default SMTP hostname is `localhost`.
 
-Defaults are a 24-hour verification lifetime, a 30-minute reset lifetime, and a 60-second per-purpose email cooldown. All are configurable in `backend/.env.example`; settings are validated in `backend/app/core/config.py:38`.
+Defaults are a 24-hour verification lifetime, a 30-minute reset lifetime, and a 60-second per-purpose email cooldown. Lifetimes start at request time, not delivery time. All are configurable in `backend/.env.example`; settings are validated in `backend/app/core/config.py:40`.
 
-If Mailpit/SMTP is unavailable but Redis is available, account creation still succeeds and the account remains limited. The background task logs a sanitized delivery error. Request a replacement after the cooldown once SMTP is available. A `202` response acknowledges the request, not successful delivery. In-process tasks are not durable and may be lost on restart; a persistent delivery queue and retries remain launch requirements.
+With PostgreSQL and Redis available, account creation atomically queues an encrypted message even if SMTP or the worker is unavailable. The worker retries transient failures and discards inactive/expired links. A `202` response acknowledges queueing, not SMTP acceptance or inbox delivery. Permanent/exhausted failures require a new request after the cooldown. Restarts preserve jobs; ambiguous SMTP outcomes can produce duplicate messages with the same single-use link. See [delivery operations](EMAIL_OUTBOX.md) for key configuration, retry policy, and monitoring.
 
 Mailpit inboxes contain real bearer-token links. Keep them local and never expose the inbox or SMTP listener publicly. Do not log message bodies, SMTP credentials, reset/verification tokens, or request bodies containing passwords.
 
