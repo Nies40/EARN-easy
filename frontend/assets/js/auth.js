@@ -26,7 +26,10 @@ async function request(path, body) {
         response = await fetch(`/api${path}`, {
             method: body === undefined ? "GET" : "POST",
             credentials: "same-origin",
-            headers: body === undefined ? {} : { "Content-Type": "application/json" },
+            headers:
+                body === undefined
+                    ? {}
+                    : { "Content-Type": "application/json" },
             body: body === undefined ? undefined : JSON.stringify(body),
         });
     } catch {
@@ -35,8 +38,12 @@ async function request(path, body) {
     const result = await response.json().catch(() => ({}));
     if (!response.ok) {
         const detail = result.details?.[0];
-        const message = detail ? `${detail.field}: ${detail.message}` : result.error;
-        const error = new Error(message || "The request could not be completed.");
+        const message = detail
+            ? `${detail.field}: ${detail.message}`
+            : result.error;
+        const error = new Error(
+            message || "The request could not be completed.",
+        );
         error.status = response.status;
         throw error;
     }
@@ -49,16 +56,23 @@ function showMode(mode, focus = false) {
     authSwitch.hidden = false;
     signupForm.hidden = !signingUp;
     loginForm.hidden = signingUp;
-    document.getElementById("showSignup").setAttribute("aria-pressed", String(signingUp));
-    document.getElementById("showLogin").setAttribute("aria-pressed", String(!signingUp));
+    document
+        .getElementById("showSignup")
+        .setAttribute("aria-pressed", String(signingUp));
+    document
+        .getElementById("showLogin")
+        .setAttribute("aria-pressed", String(!signingUp));
     document.getElementById("pageHeading").textContent = signingUp
-        ? "Create your account" : "Welcome back";
+        ? "Create your account"
+        : "Welcome back";
     document.getElementById("pageDescription").textContent = signingUp
-        ? "Fill in your details to get started for free." : "Sign in to your Easyearn account.";
+        ? "Fill in your details to get started for free."
+        : "Sign in to your Easyearn account.";
     setMessage(signupMessage, "");
     setMessage(loginMessage, "");
     setMessage(accountMessage, "");
-    if (focus) document.getElementById(signingUp ? "name" : "loginIdentifier").focus();
+    if (focus)
+        document.getElementById(signingUp ? "name" : "loginIdentifier").focus();
 }
 
 function showAccount(user) {
@@ -67,8 +81,10 @@ function showAccount(user) {
     loginForm.hidden = true;
     accountPanel.hidden = false;
     document.getElementById("pageHeading").textContent = "Your account";
-    document.getElementById("pageDescription").textContent = "You are signed in to Easyearn.";
-    document.getElementById("accountWelcome").textContent = `Welcome, ${user.name}!`;
+    document.getElementById("pageDescription").textContent =
+        "You are signed in to Easyearn.";
+    document.getElementById("accountWelcome").textContent =
+        `Welcome, ${user.name}!`;
     document.getElementById("accountEmail").textContent = user.email;
     document.querySelector(".account-note").textContent = user.email_verified
         ? "Your email is verified."
@@ -76,8 +92,12 @@ function showAccount(user) {
     setMessage(accountMessage, "");
 }
 
-document.getElementById("showSignup").addEventListener("click", () => showMode("signup", true));
-document.getElementById("showLogin").addEventListener("click", () => showMode("login", true));
+document
+    .getElementById("showSignup")
+    .addEventListener("click", () => showMode("signup", true));
+document
+    .getElementById("showLogin")
+    .addEventListener("click", () => showMode("login", true));
 
 document.querySelectorAll(".toggle").forEach((button) => {
     button.addEventListener("click", () => {
@@ -85,9 +105,12 @@ document.querySelectorAll(".toggle").forEach((button) => {
         const show = field.type === "password";
         field.type = show ? "text" : "password";
         button.setAttribute("aria-pressed", String(show));
-        button.setAttribute("aria-label", `${show ? "Hide" : "Show"} ${
-            field.id === "password" ? "password" : "confirm password"
-        }`);
+        button.setAttribute(
+            "aria-label",
+            `${show ? "Hide" : "Show"} ${
+                field.id === "password" ? "password" : "confirm password"
+            }`,
+        );
     });
 });
 
@@ -95,7 +118,11 @@ signupForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!signupForm.reportValidity()) return;
     if (new TextEncoder().encode(password.value).length > 72) {
-        setMessage(signupMessage, "Password must be at most 72 UTF-8 bytes.", "error");
+        setMessage(
+            signupMessage,
+            "Password must be at most 72 UTF-8 bytes.",
+            "error",
+        );
         password.focus();
         return;
     }
@@ -108,9 +135,17 @@ signupForm.addEventListener("submit", async (event) => {
     const phone = document.getElementById("phone").value.trim();
     const countryCode = document.getElementById("countryCode").value;
     const digits = phone.replace(/[\s().-]/g, "");
-    if (phone && (!/^\d+$/.test(digits) || digits.length < 7 ||
-        (countryCode + digits).length > 17)) {
-        setMessage(signupMessage, "Please enter a valid phone number.", "error");
+    if (
+        phone &&
+        (!/^\d+$/.test(digits) ||
+            digits.length < 7 ||
+            (countryCode + digits).length > 17)
+    ) {
+        setMessage(
+            signupMessage,
+            "Please enter a valid phone number.",
+            "error",
+        );
         document.getElementById("phone").focus();
         return;
     }
@@ -154,25 +189,30 @@ loginForm.addEventListener("submit", async (event) => {
     }
 });
 
-document.getElementById("logoutButton").addEventListener("click", async (event) => {
-    const button = event.currentTarget;
-    setBusy(button, true);
-    try {
-        await request("/logout", {});
-        signupForm.reset();
-        loginForm.reset();
-        showMode("login", true);
-    } catch (error) {
-        setMessage(accountMessage, error.message, "error");
-    } finally {
-        setBusy(button, false);
-    }
-});
+document
+    .getElementById("logoutButton")
+    .addEventListener("click", async (event) => {
+        const button = event.currentTarget;
+        setBusy(button, true);
+        try {
+            await request("/logout", {});
+            signupForm.reset();
+            loginForm.reset();
+            showMode("login", true);
+        } catch (error) {
+            setMessage(accountMessage, error.message, "error");
+        } finally {
+            setBusy(button, false);
+        }
+    });
 
 [password, confirmPassword].forEach((field) => {
     field.addEventListener("input", () => setMessage(signupMessage, ""));
 });
 
-request("/me").then((result) => showAccount(result.user)).catch((error) => {
-    if (error.status !== 401) setMessage(signupMessage, error.message, "error");
-});
+request("/me")
+    .then((result) => showAccount(result.user))
+    .catch((error) => {
+        if (error.status !== 401)
+            setMessage(signupMessage, error.message, "error");
+    });
