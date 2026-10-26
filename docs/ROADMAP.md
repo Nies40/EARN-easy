@@ -23,7 +23,9 @@ This translates the supplied Nies Technologies brief into implementation stages.
 
 ## Before public launch
 
-- [ ] Add login/signup/recovery throttling, abuse protection, and a shared limiter for multiple workers.
+- [x] Add shared Redis-backed attempt limits for login, signup, verification, and password recovery.
+- [x] Test concurrent quotas, client-IP spoofing defenses, expiry, and fail-closed Redis outages.
+- [ ] Tune quotas for real traffic and add monitoring/perimeter protection against distributed abuse.
 - [ ] Replace best-effort background SMTP tasks with durable delivery and automatic retries.
 - [ ] Apply request-size limits and trusted proxy rules at the deployment boundary.
 - [ ] Schedule expired-session and expired-token cleanup.

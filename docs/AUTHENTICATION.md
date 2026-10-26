@@ -2,7 +2,7 @@
 
 The frontend and FastAPI API share one origin. Use cookie authentication, not browser-stored JWTs. API request bodies are JSON; cookies are issued only by signup/login and cleared by logout or successful password reset.
 
-Sources: `backend/app/modules/auth/router.py:47`, `backend/app/modules/auth/schemas.py:37`, and `backend/app/modules/dashboard/router.py:12`. Development also exposes interactive schemas at `/docs`.
+Sources: `backend/app/modules/auth/router.py:48`, `backend/app/modules/auth/schemas.py:37`, and `backend/app/modules/dashboard/router.py:12`. Development also exposes interactive schemas at `/docs`.
 
 ## Account access
 
@@ -13,6 +13,12 @@ Sources: `backend/app/modules/auth/router.py:47`, `backend/app/modules/auth/sche
 - Unauthenticated protected requests return `401`; authenticated but unverified dashboard requests return `403`.
 
 Access dependencies: `backend/app/api/dependencies.py:25`.
+
+## Shared attempt limits
+
+Signup, login, verification request/confirmation, and password forgot/reset POST endpoints have shared Redis-backed per-network limits, applied before body validation or database access. Successful, failed, and malformed attempts all count. Exhausted quotas return `429` with `Retry-After` in whole seconds. Redis failures return `503` with `Retry-After: 5`; the server does not silently disable protection. Logout, account reads, and dashboard reads do not depend on Redis.
+
+The existing per-account email cooldowns remain independent of these quotas. The generic forgot-password response described below applies when the network quota is available; an exhausted client network receives the same `429` regardless of whether an email exists. See [rate limiting](RATE_LIMITING.md) for configuration and trusted-proxy requirements.
 
 ## Registration and sessions
 
@@ -86,11 +92,11 @@ Templates: `backend/app/modules/auth/emails.py:7`.
 
 ## Local email configuration
 
-Run `docker compose up -d db mailpit` from the repository root, apply migrations, and start FastAPI as described in the [README](../README.md). Mailpit listens for SMTP on `localhost:1025`; its inbox is at <http://localhost:8025>. No domain, external credentials, or provider account is required. The API runs on the host, not inside Compose, so the default SMTP hostname is `localhost`.
+Run `docker compose up -d db mailpit redis` from the repository root, apply migrations, and start FastAPI as described in the [README](../README.md). Mailpit listens for SMTP on `localhost:1025`; its inbox is at <http://localhost:8025>. No domain, external credentials, or provider account is required. The API runs on the host, not inside Compose, so the default SMTP hostname is `localhost`.
 
-Defaults are a 24-hour verification lifetime, a 30-minute reset lifetime, and a 60-second per-purpose email cooldown. All are configurable in `backend/.env.example`; settings are validated in `backend/app/core/config.py:26`.
+Defaults are a 24-hour verification lifetime, a 30-minute reset lifetime, and a 60-second per-purpose email cooldown. All are configurable in `backend/.env.example`; settings are validated in `backend/app/core/config.py:38`.
 
-If Mailpit/SMTP is unavailable, account creation still succeeds and the account remains limited. The background task logs a sanitized delivery error. Request a replacement after the cooldown once SMTP is available. A `202` response acknowledges the request, not successful delivery. In-process tasks are not durable and may be lost on restart; a persistent delivery queue, retries, and shared/IP-based abuse protection remain launch requirements.
+If Mailpit/SMTP is unavailable but Redis is available, account creation still succeeds and the account remains limited. The background task logs a sanitized delivery error. Request a replacement after the cooldown once SMTP is available. A `202` response acknowledges the request, not successful delivery. In-process tasks are not durable and may be lost on restart; a persistent delivery queue and retries remain launch requirements.
 
 Mailpit inboxes contain real bearer-token links. Keep them local and never expose the inbox or SMTP listener publicly. Do not log message bodies, SMTP credentials, reset/verification tokens, or request bodies containing passwords.
 

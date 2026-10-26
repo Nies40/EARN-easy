@@ -11,12 +11,12 @@
 
 | Component        | Responsibility                                                                 | Source                                                                                |
 | ---------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
-| App factory      | Wire routes, middleware, database sessions, lifecycle, and public files        | `backend/app/main.py:19`                                                              |
+| App factory      | Wire routes, middleware, database sessions, lifecycle, and public files        | `backend/app/main.py:21`                                                              |
 | API dependencies | Supply request-scoped database sessions and authenticated users                | `backend/app/api/dependencies.py:20`                                                  |
-| Settings         | Read environment configuration and validate deployment settings                | `backend/app/core/config.py:11`                                                       |
+| Settings         | Read environment configuration and validate deployment settings                | `backend/app/core/config.py:21`                                                       |
 | Security helpers | Hash passwords and generate/hash random session tokens                         | `backend/app/core/security.py:7`                                                      |
 | Middleware       | Reject unexpected browser origins; set security and cache headers              | `backend/app/core/middleware.py:8`                                                    |
-| Auth routes      | Translate HTTP requests/responses and set or clear cookies                     | `backend/app/modules/auth/router.py:47`                                               |
+| Auth routes      | Translate HTTP requests/responses and set or clear cookies                     | `backend/app/modules/auth/router.py:48`                                               |
 | Auth service     | Register, authenticate, rotate, expire, and revoke sessions                    | `backend/app/modules/auth/service.py:48`                                              |
 | Users            | Define user persistence and identifier queries                                 | `backend/app/modules/users/models.py:10`, `backend/app/modules/users/repository.py:9` |
 | Migrations       | Apply reviewed, versioned schema changes                                       | `backend/migrations/env.py:35`                                                        |
@@ -25,12 +25,16 @@
 ## Request and data flow
 
 ```text
-Browser → security/host middleware → API route → auth service → user queries / SQLAlchemy
-                                                                     ↓
-                                                                 PostgreSQL
+Browser → security/host checks → auth rate limiter → API route → auth service → PostgreSQL
+                                      ↓
+                                    Redis
 ```
 
 Routes handle HTTP concerns; services handle authentication decisions and transaction boundaries. ORM queries use bound values rather than interpolated SQL. Synchronous endpoints run database and bcrypt work in FastAPI's thread pool rather than blocking async handlers.
+
+Authentication writes first pass through `AuthRateLimitMiddleware` (`backend/app/api/rate_limit.py:50`). It uses an asynchronous Redis client and an atomic Lua counter/expiry operation shared by workers (`backend/app/core/rate_limit.py:63`). Host/origin rejection runs before the limiter. Policies are per endpoint and source network; raw forwarded-IP headers are ignored by the app. Rejected requests do not reach validation, bcrypt, or SQL queries. Missing client addresses and Redis errors fail closed with `503`; logout and reads remain independent of Redis.
+
+Redis stores expiring quota counters only, not user accounts or session/token data. Each app owns a bounded Redis connection pool and closes it during shutdown. The [rate-limiting guide](RATE_LIMITING.md) covers proxy trust, timeouts, restart behavior, and integration testing.
 
 Registration validates and normalizes the submitted identifiers, hashes the password, and commits the user and session together. Lowercase checks and unique database constraints protect normalized email/username identifiers, including concurrent duplicate registrations.
 

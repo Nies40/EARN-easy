@@ -7,7 +7,7 @@ The backend implements registration, login/logout, email verification, password 
 ## Prerequisites
 
 - Python 3.12–3.14 and [uv](https://docs.astral.sh/uv/).
-- PostgreSQL, or Docker with Compose for the included local PostgreSQL 17 service.
+- PostgreSQL and Redis, or Docker with Compose for the included local services.
 
 Dependencies and supported Python versions are defined in `backend/pyproject.toml:1`; exact dependencies are recorded in `backend/uv.lock`.
 
@@ -16,12 +16,12 @@ Dependencies and supported Python versions are defined in `backend/pyproject.tom
 From the repository root:
 
 ```bash
-docker compose up -d db mailpit
+docker compose up -d db mailpit redis
 cd backend
 cp .env.example .env
 uv sync --locked
 uv run alembic upgrade head
-uv run uvicorn app.main:app --reload
+uv run uvicorn app.main:app --reload --no-proxy-headers
 ```
 
 Open **<http://localhost:8000>**. Interactive API documentation is at **<http://localhost:8000/docs>** in development.
@@ -30,7 +30,9 @@ Read development emails in **Mailpit at <http://localhost:8025>**. It captures S
 
 If PostgreSQL is already installed, skip the Docker command, create a database and application role, and update `DATABASE_URL` in `backend/.env` before running migrations. The Compose credentials are **local-development defaults only**; the database port is bound to `127.0.0.1` (`compose.yaml:1`).
 
-With an existing PostgreSQL installation, run `docker compose up -d mailpit` separately or configure your own local SMTP listener. Apply `uv run alembic upgrade head` to an existing project database too; migration `0002` adds account token tables without changing existing users. Existing accounts with no verification timestamp must verify their email before dashboard access.
+With an existing PostgreSQL installation, run `docker compose up -d mailpit redis` separately or configure your own local SMTP and Redis services. Apply `uv run alembic upgrade head` to an existing project database too; migration `0002` adds account token tables without changing existing users. Existing accounts with no verification timestamp must verify their email before dashboard access.
+
+Redis is required for signup, login, verification, and password recovery, including local development. Start it before testing those flows; if it is unavailable they return `503` rather than bypassing abuse protection. Logout and account reads remain available. The local Redis service binds to `127.0.0.1:6379` and stores only temporary counters (`compose.yaml:24`). See [rate limiting](docs/RATE_LIMITING.md) for defaults, proxy configuration, and failure behavior. No PostgreSQL migration is needed for rate limiting.
 
 FastAPI serves both the frontend and API from the same origin. Do not open the HTML file directly. Node.js is no longer required.
 
@@ -64,15 +66,16 @@ earn-easy/
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── AUTHENTICATION.md
+│   ├── RATE_LIMITING.md
 │   └── ROADMAP.md
-└── compose.yaml                # Local PostgreSQL and Mailpit
+└── compose.yaml                # Local PostgreSQL, Mailpit, and Redis
 ```
 
 See [architecture](docs/ARCHITECTURE.md) for module responsibilities and extension conventions.
 
 ## Configuration
 
-Settings load from `backend/.env`; process environment variables take precedence. Do not commit real credentials. Source: `backend/app/core/config.py:11`.
+Settings load from `backend/.env`; process environment variables take precedence. Do not commit real credentials. Source: `backend/app/core/config.py:21`.
 
 | Variable              | Default                      | Purpose                                                  |
 | --------------------- | ---------------------------- | -------------------------------------------------------- |
@@ -87,7 +90,7 @@ Settings load from `backend/.env`; process environment variables take precedence
 
 When changing the application host or port, update `APP_URL` too. Add a new hostname to `ALLOWED_HOSTS` when needed. No cross-origin frontend is configured.
 
-Account email settings are in `backend/app/core/config.py:26` and `backend/.env.example`:
+Account email settings are in `backend/app/core/config.py:38` and `backend/.env.example`:
 
 - `EMAIL_VERIFICATION_TTL_SECONDS=86400`: verification links last 24 hours.
 - `PASSWORD_RESET_TTL_SECONDS=1800`: reset links last 30 minutes.
@@ -99,9 +102,11 @@ Account email settings are in `backend/app/core/config.py:26` and `backend/.env.
 
 Production requires `SMTP_TLS_MODE=starttls` or `ssl` and a non-placeholder sender address. Select a managed SMTP provider and verify your sending domain before enabling real outbound mail; check that the provider permits your business model.
 
+Authentication limits and Redis connection settings are configurable in `backend/.env.example` and `backend/app/core/config.py:48`. Defaults are a shared 60-second window, endpoint-specific attempt limits, and `REDIS_URL=redis://localhost:6379/0`. Every worker must use the same Redis database, key prefix, environment, and quota configuration. The app ignores raw forwarded-IP headers; keep `--no-proxy-headers` for direct/local access and configure trusted proxies explicitly for deployment.
+
 ## API
 
-Routes are registered in `backend/app/api/router.py:10` and `backend/app/modules/auth/router.py:47`.
+Routes are registered in `backend/app/api/router.py:10` and `backend/app/modules/auth/router.py:48`.
 
 | Method | Endpoint      | Purpose                                         |
 | ------ | ------------- | ----------------------------------------------- |
@@ -115,6 +120,8 @@ Signup requires `name`, `email`, and `password`. The existing username and phone
 
 The verification, recovery, and verified-only `/api/dashboard` endpoints are documented in the [authentication API contract](docs/AUTHENTICATION.md). Unverified accounts can still sign in, read `/api/me`, request verification, and sign out.
 
+Protected authentication POST requests may return `429` with `Retry-After`, or `503` with `Retry-After: 5` if the shared limiter is unavailable. IP-based limits apply before body validation and database access; the existing per-account email cooldowns still apply too.
+
 ## Development checks
 
 Run inside `backend/`:
@@ -126,13 +133,15 @@ uv run ruff format --check .
 uv run alembic check
 ```
 
-Most tests use an isolated in-memory SQLite database and capture outgoing messages without SMTP (`backend/tests/conftest.py:25`). PostgreSQL concurrency tests skip unless `TEST_DATABASE_URL` is explicitly set. Run them against a development/test database:
+Most tests use an isolated in-memory SQLite database, capture outgoing messages without SMTP, and inject a Redis test double (`backend/tests/conftest.py:30`). This injection is test-only; the application never falls back to process-local counters. PostgreSQL tests skip unless `TEST_DATABASE_URL` is explicitly set, and live Redis tests skip unless `TEST_REDIS_URL` is set. Run the integration checks against local development services:
 
 ```bash
-TEST_DATABASE_URL=postgresql+psycopg://easyearn:easyearn_dev_password@localhost:5432/easyearn uv run pytest tests/integration -q
+TEST_DATABASE_URL=postgresql+psycopg://easyearn:easyearn_dev_password@localhost:5432/easyearn \
+TEST_REDIS_URL=redis://localhost:6379/0 \
+uv run pytest tests/integration -q
 ```
 
-The integration fixture creates a uniquely named schema per test and drops only that schema afterward; its database role needs schema-creation permission (`backend/tests/integration/conftest.py:13`). Never use production credentials for tests. `alembic check` separately requires a running, migrated PostgreSQL database and checks for model/schema drift.
+The PostgreSQL fixture creates a uniquely named schema per test and drops only that schema afterward; its database role needs schema-creation permission (`backend/tests/integration/conftest.py:14`). Redis tests use uniquely prefixed, short-lived keys and never flush a database. Never use production credentials for tests. `alembic check` separately requires a running, migrated PostgreSQL database and checks for model/schema drift.
 
 Create a migration after changing models:
 
@@ -148,7 +157,7 @@ uv run alembic upgrade head
 - Session, verification, and password-reset tokens are stored only as SHA-256 hashes in PostgreSQL. Browser cookies are `HttpOnly`, `SameSite=Lax`, and `Secure` in production; tokens are not stored in browser local storage.
 - Database uniqueness constraints, bound ORM queries, request validation, host/origin checks, and frontend security headers provide the initial security baseline.
 - Dashboard access requires verified email. Resetting a password revokes every session for that account and does not mark email verified or automatically sign in.
-- Email requests have per-account cooldowns, but shared/IP-based login/signup/recovery throttling is still required. Expired-session/token cleanup and production deployment configuration also remain pending.
+- Authentication mutations have Redis-backed per-network quotas, and email requests retain per-account cooldowns. Tune quotas for shared networks and monitor distributed abuse; rate limiting is not complete DDoS protection. Expired-session/token cleanup and production deployment configuration remain pending.
 - SMTP delivery is best-effort via in-process background tasks, not a durable queue. Delivery failures are logged without message/token contents; users may request a replacement after the cooldown. Add reliable queued delivery and retry handling before public launch.
 - The retained Terms and Privacy links do not have published pages yet. Publish reviewed policies before accepting real registrations.
 - The previous Node/SQLite prototype has been replaced. No legacy account data is automatically migrated.
