@@ -1,24 +1,29 @@
+import json
 from unittest.mock import AsyncMock, Mock
 
 import bcrypt
 import pytest
+from cryptography.fernet import Fernet
 from fastapi.testclient import TestClient
 from redis.asyncio import Redis
 from sqlalchemy import create_engine, event
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.api.dependencies import get_db, get_email_sender
+from app.api.dependencies import get_db
 from app.core import security
 from app.core.config import Settings
 from app.core.rate_limit import RedisRateLimiter
 from app.db.base import Base
 from app.integrations.email import OutgoingEmail
 from app.main import create_app
+from app.modules.outbox.worker import EmailWorker
 
 
 @pytest.fixture(autouse=True)
 def inexpensive_test_hashes(monkeypatch):
+    # Test-process-only keys; no application fallback or committed encryption key.
+    monkeypatch.setenv("EMAIL_OUTBOX_KEYS", json.dumps([Fernet.generate_key().decode("ascii")]))
     # Production always uses cost 12. Only the isolated test process uses cost 4.
     monkeypatch.setattr(security, "BCRYPT_ROUNDS", 4)
     monkeypatch.setattr(
@@ -55,7 +60,7 @@ def settings():
 
 
 @pytest.fixture
-def email_sender():
+def email_sender(db, settings):
     class CapturingEmailSender:
         def __init__(self):
             self.messages: list[OutgoingEmail] = []
@@ -63,7 +68,17 @@ def email_sender():
         def send(self, message: OutgoingEmail) -> None:
             self.messages.append(message)
 
-    return CapturingEmailSender()
+        def deliver_pending(self) -> None:
+            for _ in range(100):
+                if not self.worker.process_once():
+                    return
+            pytest.fail("Test worker did not drain its due jobs.")
+
+    sender = CapturingEmailSender()
+    sender.worker = EmailWorker(
+        sessionmaker(bind=db.get_bind(), expire_on_commit=False), settings, sender
+    )
+    return sender
 
 
 @pytest.fixture
@@ -87,7 +102,6 @@ def client(db, settings, email_sender, rate_limiter):
         yield db
 
     app.dependency_overrides[get_db] = override_db
-    app.dependency_overrides[get_email_sender] = lambda: email_sender
     with TestClient(app, client=("127.0.0.1", 50000)) as test_client:
         yield test_client
 

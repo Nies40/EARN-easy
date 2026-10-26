@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
-from app.api.dependencies import get_db, get_email_sender
+from app.api.dependencies import get_db
 from app.core.config import Settings
 from app.core.rate_limit import RedisRateLimiter
 from app.core.security import hash_session_token
@@ -197,7 +197,6 @@ def test_production_cookie_is_secure(db, signup_payload, email_sender, redis_cli
         yield db
 
     app.dependency_overrides[get_db] = override_db
-    app.dependency_overrides[get_email_sender] = lambda: email_sender
     with TestClient(app, base_url="https://testserver", client=("127.0.0.1", 50000)) as client:
         response = client.post("/api/signup", json=signup_payload)
         assert response.status_code == 201

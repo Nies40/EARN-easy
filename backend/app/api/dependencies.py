@@ -4,17 +4,12 @@ from fastapi import Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.integrations.email import EmailSender
 from app.modules.auth import service
 from app.modules.users.models import User
 
 
 def get_app_settings(request: Request) -> Settings:
     return request.app.state.settings
-
-
-def get_email_sender(request: Request) -> EmailSender:
-    return request.app.state.email_sender
 
 
 def get_db(request: Request) -> Iterator[Session]:

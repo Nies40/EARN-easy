@@ -1,10 +1,9 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_app_settings, get_current_user, get_db, get_email_sender
+from app.api.dependencies import get_app_settings, get_current_user, get_db
 from app.api.rate_limit import RATE_LIMIT_RESPONSES
 from app.core.config import Settings
-from app.integrations.email import EmailSender, deliver_email
 from app.modules.auth import service
 from app.modules.auth.schemas import (
     AuthResponse,
@@ -52,13 +51,11 @@ def signup(
     payload: SignupRequest,
     request: Request,
     response: Response,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_app_settings),
-    email_sender: EmailSender = Depends(get_email_sender),
 ) -> AuthResponse:
     try:
-        user, token, message = service.register(
+        user, token, _message = service.register(
             db, payload, settings, request.cookies.get(settings.session_cookie_name)
         )
     except service.DuplicateAccountError as error:
@@ -66,7 +63,6 @@ def signup(
             status_code=409, detail="That email or username is already registered."
         ) from error
     _set_session_cookie(response, token, settings)
-    background_tasks.add_task(deliver_email, email_sender, message)
     return AuthResponse(
         message="Account created successfully.", user=PublicUser.model_validate(user)
     )
@@ -120,22 +116,18 @@ def logout(
     responses=RATE_LIMIT_RESPONSES,
 )
 def request_verification(
-    background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_app_settings),
-    email_sender: EmailSender = Depends(get_email_sender),
 ) -> MessageResponse:
     try:
-        message = service.request_verification(db, user, settings)
+        service.request_verification(db, user, settings)
     except service.EmailCooldownError as error:
         raise HTTPException(
             status_code=429,
             detail="Please wait before requesting another verification email.",
             headers={"Retry-After": str(settings.auth_email_cooldown_seconds)},
         ) from error
-    if message is not None:
-        background_tasks.add_task(deliver_email, email_sender, message)
     return MessageResponse(message="If verification is needed, an email has been requested.")
 
 
@@ -160,14 +152,10 @@ def confirm_verification(payload: TokenRequest, db: Session = Depends(get_db)) -
 )
 def forgot_password(
     payload: EmailRequest,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_app_settings),
-    email_sender: EmailSender = Depends(get_email_sender),
 ) -> MessageResponse:
-    message = service.request_password_reset(db, str(payload.email), settings)
-    if message is not None:
-        background_tasks.add_task(deliver_email, email_sender, message)
+    service.request_password_reset(db, str(payload.email), settings)
     return MessageResponse(
         message="If an account matches that email, a reset email has been requested."
     )

@@ -10,6 +10,7 @@ from app.modules.auth.models import (  # noqa: F401
     PasswordResetToken,
     UserSession,
 )
+from app.modules.outbox.models import EmailJob  # noqa: F401
 from app.modules.users.models import User  # noqa: F401
 
 config = context.config

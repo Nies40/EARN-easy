@@ -11,6 +11,7 @@ from app.modules.auth import tokens
 from app.modules.auth.emails import password_reset_email, verification_email
 from app.modules.auth.models import EmailVerificationToken, PasswordResetToken, UserSession
 from app.modules.auth.schemas import SignupRequest
+from app.modules.outbox.service import enqueue_account_email
 from app.modules.users import repository
 from app.modules.users.models import User
 
@@ -71,6 +72,9 @@ def register(
         db, EmailVerificationToken, user.id, settings.email_verification_ttl_seconds
     )
     message = verification_email(user.email, verification_token, settings)
+    enqueue_account_email(
+        db, settings, EmailVerificationToken, verification_token, "verification", message
+    )
     db.commit()
     return user, token, message
 
@@ -129,6 +133,7 @@ def request_verification(db: Session, user: User, settings: Settings) -> Outgoin
         db, EmailVerificationToken, user.id, settings.email_verification_ttl_seconds
     )
     message = verification_email(user.email, token, settings)
+    enqueue_account_email(db, settings, EmailVerificationToken, token, "verification", message)
     db.commit()
     return message
 
@@ -150,6 +155,7 @@ def request_password_reset(db: Session, email: str, settings: Settings) -> Outgo
         return None
     token = tokens.issue(db, PasswordResetToken, user.id, settings.password_reset_ttl_seconds)
     message = password_reset_email(user.email, token, settings)
+    enqueue_account_email(db, settings, PasswordResetToken, token, "password_reset", message)
     db.commit()
     return message
 

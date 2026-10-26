@@ -9,11 +9,12 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from app.api.errors import register_error_handlers
 from app.api.rate_limit import AuthRateLimitMiddleware
 from app.api.router import router
+from app.core.body_limit import RequestBodyLimitMiddleware
 from app.core.config import Settings, get_settings
 from app.core.middleware import SecurityMiddleware
 from app.core.rate_limit import RateLimiter, RedisRateLimiter
 from app.db.session import create_database_engine, create_session_factory
-from app.integrations.email import SMTPEmailSender
+from app.modules.outbox.crypto import EmailPayloadCipher
 
 FRONTEND_ROOT = Path(__file__).resolve().parents[2] / "frontend"
 
@@ -28,6 +29,7 @@ def create_app(
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
         try:
+            EmailPayloadCipher(settings)
             yield
         finally:
             try:
@@ -45,8 +47,8 @@ def create_app(
     )
     app.state.settings = settings
     app.state.session_factory = create_session_factory(engine)
-    app.state.email_sender = SMTPEmailSender(settings)
     app.state.rate_limiter = limiter
+    app.add_middleware(RequestBodyLimitMiddleware, max_bytes=settings.max_request_body_bytes)
     app.add_middleware(AuthRateLimitMiddleware, settings=settings, limiter=limiter)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_hosts)
     app.add_middleware(SecurityMiddleware, settings=settings)

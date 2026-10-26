@@ -2,6 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
+from cryptography.fernet import Fernet
 from pydantic import (
     AnyHttpUrl,
     EmailStr,
@@ -29,6 +30,7 @@ class Settings(BaseSettings):
         "postgresql+psycopg://easyearn:easyearn_dev_password@localhost:5432/easyearn"
     )
     allowed_hosts: list[str] = ["localhost", "127.0.0.1"]
+    max_request_body_bytes: int = Field(default=20480, ge=1024, le=1048576)
     session_cookie_name: str = Field(
         default="easyearn_session", pattern=r"^[a-zA-Z0-9_-]+$"
     )
@@ -58,6 +60,27 @@ class Settings(BaseSettings):
     auth_rate_limit_verification_confirm: int = Field(default=20, ge=1, le=10000)
     auth_rate_limit_password_forgot: int = Field(default=5, ge=1, le=10000)
     auth_rate_limit_password_reset: int = Field(default=10, ge=1, le=10000)
+    email_outbox_keys: list[SecretStr] = []
+    email_worker_poll_seconds: float = Field(default=1, ge=0.05, le=60)
+    email_worker_lease_seconds: int = Field(default=120, ge=30, le=3600)
+    email_worker_max_attempts: int = Field(default=5, ge=1, le=20)
+    email_retry_base_seconds: int = Field(default=30, ge=1, le=3600)
+    email_retry_max_seconds: int = Field(default=3600, ge=1, le=86400)
+    email_cleanup_interval_seconds: int = Field(default=300, ge=1, le=86400)
+    email_cleanup_batch_size: int = Field(default=500, ge=1, le=10000)
+    email_outbox_retention_seconds: int = Field(default=604800, ge=3600, le=2592000)
+
+    @field_validator("email_outbox_keys")
+    @classmethod
+    def validate_outbox_keys(cls, values: list[SecretStr]) -> list[SecretStr]:
+        for value in values:
+            try:
+                Fernet(value.get_secret_value().encode("ascii"))
+            except (ValueError, UnicodeError):
+                raise ValueError("EMAIL_OUTBOX_KEYS must contain valid Fernet keys.") from None
+        if len({value.get_secret_value() for value in values}) != len(values):
+            raise ValueError("EMAIL_OUTBOX_KEYS must not contain duplicate keys.")
+        return values
 
     @field_validator("redis_url")
     @classmethod
@@ -78,6 +101,8 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_deployment(self) -> "Settings":
+        if self.email_retry_max_seconds < self.email_retry_base_seconds:
+            raise ValueError("EMAIL_RETRY_MAX_SECONDS must be at least EMAIL_RETRY_BASE_SECONDS.")
         if self.database_url.scheme != "postgresql+psycopg":
             raise ValueError("DATABASE_URL must use the postgresql+psycopg driver.")
         if not self.allowed_hosts or "*" in self.allowed_hosts:

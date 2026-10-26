@@ -11,6 +11,7 @@ from app.modules.users.models import User
 
 
 def email_token(email_sender) -> str:
+    email_sender.deliver_pending()
     link = next(
         line for line in email_sender.messages[-1].body.splitlines() if line.startswith("http")
     )
@@ -27,6 +28,7 @@ def test_signup_emails_a_hashed_expiring_verification_token(
 ):
     response = client.post("/api/signup", json=signup_payload)
     assert response.status_code == 201
+    email_sender.deliver_pending()
     assert len(email_sender.messages) == 1
     message = email_sender.messages[0]
     assert message.recipient == signup_payload["email"]
@@ -102,6 +104,7 @@ def test_verification_resend_has_an_authenticated_cooldown(client, signup_payloa
     response = client.post("/api/email-verification/request")
     assert response.status_code == 429
     assert response.headers["Retry-After"] == "60"
+    email_sender.deliver_pending()
     assert len(email_sender.messages) == 1
 
 
@@ -110,6 +113,7 @@ def test_resend_replaces_the_previous_verification_token(client, db, signup_payl
     old_token = email_token(email_sender)
     allow_another_email(db, EmailVerificationToken)
     assert client.post("/api/email-verification/request").status_code == 202
+    email_sender.deliver_pending()
     assert len(email_sender.messages) == 2
     new_token = email_token(email_sender)
     assert new_token != old_token

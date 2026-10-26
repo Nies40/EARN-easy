@@ -7,7 +7,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.core.config import Settings
-from app.integrations.email import EmailDeliveryError, OutgoingEmail, SMTPEmailSender, deliver_email
+from app.integrations.email import EmailDeliveryError, OutgoingEmail, SMTPEmailSender
 
 
 def test_local_smtp_uses_mailpit_without_authentication(monkeypatch, settings):
@@ -58,16 +58,29 @@ def test_smtp_errors_are_wrapped_without_including_message_content(monkeypatch, 
         SMTPEmailSender(settings).send(OutgoingEmail("jane@example.com", "Subject", "secret-token"))
 
 
-def test_delivery_failure_does_not_log_token_address_or_provider_response(caplog):
-    class FailingSender:
-        def send(self, _message):
-            try:
-                raise smtplib.SMTPDataError(500, b"provider-response-with-a-secret-token")
-            except smtplib.SMTPException as error:
-                raise EmailDeliveryError("Email delivery failed.") from error
+@pytest.mark.parametrize("code", [450, 550])
+def test_smtp_response_classification_controls_retries(monkeypatch, settings, code):
+    connection = MagicMock()
+    connection.__enter__.return_value.send_message.side_effect = smtplib.SMTPDataError(
+        code, b"secret"
+    )
+    monkeypatch.setattr("app.integrations.email.smtplib.SMTP", MagicMock(return_value=connection))
+    with pytest.raises(EmailDeliveryError) as caught:
+        SMTPEmailSender(settings).send(OutgoingEmail("jane@example.com", "Subject", "Body"))
+    assert caught.value.retryable is (code < 500)
+    assert "secret" not in str(caught.value)
 
-    deliver_email(FailingSender(), OutgoingEmail("private@example.com", "Subject", "secret-token"))
-    assert "Account email delivery failed" in caplog.text
+
+def test_delivery_failure_does_not_log_token_address_or_provider_response(
+    client, signup_payload, email_sender, monkeypatch, caplog
+):
+    def unavailable(_message):
+        raise smtplib.SMTPDataError(500, b"provider-response-with-a-secret-token")
+
+    monkeypatch.setattr(email_sender, "send", unavailable)
+    client.post("/api/signup", json=signup_payload)
+    email_sender.deliver_pending()
+    assert "Outbox delivery failed" in caplog.text
     assert "secret-token" not in caplog.text
     assert "private@example.com" not in caplog.text
 
@@ -80,6 +93,7 @@ def test_signup_remains_available_if_smtp_is_down(
 
     monkeypatch.setattr(email_sender, "send", unavailable)
     assert client.post("/api/signup", json=signup_payload).status_code == 201
+    email_sender.deliver_pending()
     assert client.get("/api/me").status_code == 200
     assert client.get("/api/dashboard").status_code == 403
 

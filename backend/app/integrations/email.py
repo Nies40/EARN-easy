@@ -1,13 +1,11 @@
-import logging
 import smtplib
 import ssl
 from dataclasses import dataclass, field
 from email.message import EmailMessage
+from email.utils import formatdate
 from typing import Protocol
 
 from app.core.config import Settings
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -15,10 +13,13 @@ class OutgoingEmail:
     recipient: str = field(repr=False)
     subject: str
     body: str = field(repr=False)
+    message_id: str | None = None
 
 
 class EmailDeliveryError(Exception):
-    pass
+    def __init__(self, message: str = "Email delivery failed.", *, retryable: bool = True):
+        super().__init__(message)
+        self.retryable = retryable
 
 
 class EmailSender(Protocol):
@@ -34,6 +35,9 @@ class SMTPEmailSender:
         envelope["From"] = str(self.settings.smtp_from_email)
         envelope["To"] = message.recipient
         envelope["Subject"] = message.subject
+        envelope["Date"] = formatdate(usegmt=True)
+        if message.message_id:
+            envelope["Message-ID"] = message.message_id
         envelope.set_content(message.body)
         options = {
             "host": self.settings.smtp_host,
@@ -54,16 +58,12 @@ class SMTPEmailSender:
                         self.settings.smtp_password.get_secret_value(),
                     )
                 smtp.send_message(envelope)
+        except smtplib.SMTPAuthenticationError as error:
+            raise EmailDeliveryError(retryable=True) from error
+        except smtplib.SMTPRecipientsRefused as error:
+            retryable = any(int(value[0]) < 500 for value in error.recipients.values())
+            raise EmailDeliveryError(retryable=retryable) from error
+        except smtplib.SMTPResponseException as error:
+            raise EmailDeliveryError(retryable=error.smtp_code < 500) from error
         except (OSError, smtplib.SMTPException) as error:
             raise EmailDeliveryError("Email delivery failed.") from error
-
-
-def deliver_email(sender: EmailSender, message: OutgoingEmail) -> None:
-    """Best-effort background delivery; do not log addresses, bodies, or token links."""
-    try:
-        sender.send(message)
-    except EmailDeliveryError as error:
-        logger.error(
-            "Account email delivery failed (%s). A new request may be needed after the cooldown.",
-            type(error.__cause__ or error).__name__,
-        )
