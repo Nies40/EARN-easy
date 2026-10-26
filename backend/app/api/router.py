@@ -18,5 +18,7 @@ def health(db: Session = Depends(get_db)) -> dict[str, str]:
         db.execute(text("SELECT 1"))
     except SQLAlchemyError as error:
         db.rollback()
-        raise HTTPException(status_code=503, detail="Database is unavailable.") from error
+        raise HTTPException(
+            status_code=503, detail="Database is unavailable."
+        ) from error
     return {"status": "ok"}

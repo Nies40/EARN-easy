@@ -14,10 +14,15 @@ def register_error_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(RequestValidationError)
-    async def validation_error(_request: Request, error: RequestValidationError) -> JSONResponse:
+    async def validation_error(
+        _request: Request, error: RequestValidationError
+    ) -> JSONResponse:
         # Never echo input values: request bodies can contain passwords.
         details = [
-            {"field": ".".join(str(part) for part in item["loc"]), "message": item["msg"]}
+            {
+                "field": ".".join(str(part) for part in item["loc"]),
+                "message": item["msg"],
+            }
             for item in error.errors()
         ]
         return JSONResponse(

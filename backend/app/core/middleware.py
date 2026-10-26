@@ -10,14 +10,18 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.settings = settings
 
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: RequestResponseEndpoint
+    ) -> Response:
         if request.method not in {"GET", "HEAD", "OPTIONS"}:
             origin = request.headers.get("origin")
             expected_origin = str(self.settings.app_url).rstrip("/")
-            if (origin is not None and origin != expected_origin) or request.headers.get(
-                "sec-fetch-site"
-            ) == "cross-site":
-                response = JSONResponse({"error": "Cross-origin requests are not allowed."}, 403)
+            if (
+                origin is not None and origin != expected_origin
+            ) or request.headers.get("sec-fetch-site") == "cross-site":
+                response = JSONResponse(
+                    {"error": "Cross-origin requests are not allowed."}, 403
+                )
             else:
                 response = await call_next(request)
         else:

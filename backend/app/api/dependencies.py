@@ -35,5 +35,7 @@ def get_current_user(
 
 def get_verified_user(user: User = Depends(get_current_user)) -> User:
     if not user.email_verified:
-        raise HTTPException(status_code=403, detail="Verify your email to access this feature.")
+        raise HTTPException(
+            status_code=403, detail="Verify your email to access this feature."
+        )
     return user
