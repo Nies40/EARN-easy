@@ -33,3 +33,26 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+# Python backend
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+
+# Legacy Node dependencies and local databases
+node_modules/
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*

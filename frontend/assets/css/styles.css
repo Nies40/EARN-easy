@@ -316,10 +316,65 @@ a:focus-visible {
     outline-offset: 3px;
 }
 
-#message {
+.status {
     margin-top: 12px;
     font-size: 12px;
     text-align: center;
+    line-height: 1.6;
+    color: #77758c;
+}
+
+.status[data-state="error"] {
+    color: #d04444;
+}
+
+.status[data-state="success"] {
+    color: #258452;
+}
+
+[hidden] {
+    display: none !important;
+}
+
+.auth-switch {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 22px;
+}
+
+.auth-switch button {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: white;
+    color: var(--muted);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.auth-switch button[aria-pressed="true"] {
+    color: white;
+    border-color: var(--primary);
+    background: var(--primary);
+}
+
+.submit:disabled {
+    opacity: 0.65;
+    cursor: wait;
+    transform: none;
+}
+
+.account-logout {
+    margin-top: 18px;
+}
+
+.account-note {
+    margin-top: 12px;
+    color: var(--muted);
+    font-size: 12px;
     line-height: 1.6;
 }
 
