@@ -4,6 +4,8 @@ The Nies Technologies user platform, built with **FastAPI, PostgreSQL, and a pla
 
 The backend implements registration, login/logout, email verification, password recovery, and verified-only dashboard access. The frontend still has the signup/login and account screens; verification, recovery, and dashboard screens remain frontend work. See the [authentication API contract](docs/AUTHENTICATION.md) and [V1 roadmap](docs/ROADMAP.md).
 
+Backend handoff and measured local performance evidence are in [BACKEND_HANDOFF.md](docs/BACKEND_HANDOFF.md), including retained failures and shared sign-off items still pending. The optional acceptance runner uses only generated local test databases/roles and never targets an existing application database.
+
 ## Prerequisites
 
 - Python 3.12–3.14 and [uv](https://docs.astral.sh/uv/).
@@ -83,6 +85,7 @@ earn-easy/
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── AUTHENTICATION.md
+│   ├── BACKEND_HANDOFF.md
 │   ├── CI.md
 │   ├── DATABASE_OPERATIONS.md
 │   ├── EMAIL_OUTBOX.md

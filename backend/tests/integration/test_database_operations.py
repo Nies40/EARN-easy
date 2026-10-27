@@ -74,9 +74,11 @@ def role_database(monkeypatch):
         ).render_as_string(hide_password=False)
     with connect(admin_url, autocommit=True) as admin:
         admin.execute(sql.SQL("CREATE DATABASE {} TEMPLATE template0").format(sql.Identifier(name)))
+        created_roles = False
         try:
             with connect(source_admin) as db:
                 provision_roles(db, name, roles, passwords)
+            created_roles = True
             monkeypatch.setenv("DATABASE_URL", urls["migrator"])
             monkeypatch.setenv("DATABASE_ROLE_PREFIX", roles.prefix)
             get_settings.cache_clear()
@@ -86,10 +88,11 @@ def role_database(monkeypatch):
         finally:
             get_settings.cache_clear()
             admin.execute(sql.SQL("DROP DATABASE {} WITH (FORCE)").format(sql.Identifier(name)))
-            for kind in ("api", "worker", "backup", "migrator", "owner"):
-                admin.execute(
-                    sql.SQL("DROP ROLE IF EXISTS {}").format(sql.Identifier(roles.name(kind)))
-                )
+            if created_roles:
+                for kind in ("api", "worker", "backup", "migrator", "owner"):
+                    admin.execute(
+                        sql.SQL("DROP ROLE IF EXISTS {}").format(sql.Identifier(roles.name(kind)))
+                    )
 
 
 def test_runtime_roles_execute_real_auth_delivery_and_deny_excess_privileges(

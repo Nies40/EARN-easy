@@ -105,7 +105,7 @@ jobs:
         run: uv run alembic upgrade head
       - name: Check model and migration agreement
         run: uv run alembic check
-      - name: Run isolated and live PostgreSQL/Redis integration tests
+      - name: Run regression and real-process HTTP/SMTP acceptance tests
         run: uv run pytest -q
       - name: Exercise worker status command
         run: uv run python -m app.workers.email --status
