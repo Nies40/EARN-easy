@@ -46,6 +46,10 @@ This translates the supplied Nies Technologies brief into implementation stages.
 
 ## Performance acceptance
 
+- [x] Add repeatable wire-level API/SMTP/worker acceptance with fresh database and role bootstrap.
+- [x] Record local baselines with 10,000 seeded accounts and real bcrypt cost 12, retaining failures.
+- [ ] Agree expected production concurrency/RPS and a measurable login SLO; validate on staging.
+
 - Target registration response time below two seconds under a defined expected load; measure it rather than assuming it.
 - Define a measurable login latency target instead of promising “instant” login.
 - Load-test realistic concurrent registrations and logins, including bcrypt CPU cost and database pool limits.
