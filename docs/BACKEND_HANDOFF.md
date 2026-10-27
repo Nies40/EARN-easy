@@ -21,6 +21,8 @@ The repeatable runner is `backend/app/ops/acceptance.py:1`; it uses actual Uvico
 
 The local runner creates and drops only generated test databases and roles. It does not alter an existing application database. Test messages stay in a loopback SMTP sink; no external emails are sent.
 
+Verification snapshot on 2026-10-27: **228 tests passed** with the explicit PostgreSQL administrator/test URLs and live Redis-compatible service configured, including the real-process acceptance case. Ruff lint and the acceptance files' formatting checks passed. The strict hashed runtime-dependency audit reported no known vulnerabilities. These are local Python 3.14 results; the hosted Python 3.12–3.14 matrix and deployed environment are not claimed as verified.
+
 ## Repeatable acceptance command
 
 Install development dependencies with `uv sync --locked` inside `backend/`. Use an isolated local PostgreSQL test cluster and Redis instance, then prepare `.env.acceptance` from `.env.acceptance.example`. Never use production/shared live services.
