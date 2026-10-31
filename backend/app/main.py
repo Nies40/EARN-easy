@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -52,6 +53,13 @@ def create_app(
     app.state.session_factory = create_session_factory(engine)
     app.state.rate_limiter = limiter
     app.add_middleware(RequestBodyLimitMiddleware, max_bytes=settings.max_request_body_bytes)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[settings.frontend_url, "http://localhost:3000", "http://127.0.0.1:3000"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     app.add_middleware(AuthRateLimitMiddleware, settings=settings, limiter=limiter)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_hosts)
     app.add_middleware(SecurityMiddleware, settings=settings)

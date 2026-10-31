@@ -12,8 +12,12 @@ from app.modules.auth.models import (  # noqa: F401
     PasswordResetToken,
     UserSession,
 )
+from app.modules.credits.models import CreditBalance, CreditTransaction  # noqa: F401
 from app.modules.outbox.models import EmailJob  # noqa: F401
+from app.modules.referrals.models import Referral, ReferralClick  # noqa: F401
+from app.modules.tasks.models import Task, TaskCompletion  # noqa: F401
 from app.modules.users.models import User  # noqa: F401
+from app.modules.wallet.models import Transaction, Wallet, Withdrawal  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:

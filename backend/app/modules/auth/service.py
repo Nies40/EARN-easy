@@ -1,4 +1,6 @@
 from datetime import UTC, datetime, timedelta
+import secrets
+import string
 
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
@@ -12,6 +14,7 @@ from app.modules.auth.emails import password_reset_email, verification_email
 from app.modules.auth.models import EmailVerificationToken, PasswordResetToken, UserSession
 from app.modules.auth.schemas import SignupRequest
 from app.modules.outbox.service import enqueue_account_email
+from app.modules.referrals.models import Referral
 from app.modules.users import repository
 from app.modules.users.models import User
 
@@ -46,6 +49,16 @@ def _create_session(db: Session, user: User, settings: Settings, previous_token:
     return token
 
 
+def _generate_referral_code(db: Session) -> str:
+    alphabet = string.ascii_lowercase + string.digits
+    for _ in range(10):
+        code = "".join(secrets.choice(alphabet) for _ in range(8))
+        if not db.scalar(select(User).where(User.referral_code == code)):
+            return code
+    # Fallback with uuid prefix
+    return "u" + secrets.token_hex(4)
+
+
 def register(
     db: Session, payload: SignupRequest, settings: Settings, previous_token: str | None
 ) -> tuple[User, str, OutgoingEmail]:
@@ -58,6 +71,7 @@ def register(
         username=payload.username,
         phone=payload.phone,
         password_hash=security.hash_password(payload.password),
+        referral_code=_generate_referral_code(db),
     )
     db.add(user)
     try:
@@ -66,6 +80,14 @@ def register(
     except IntegrityError as error:
         db.rollback()
         raise DuplicateAccountError from error
+
+    # Link referral if a valid code was provided
+    if payload.referral_code:
+        referral = db.scalar(
+            select(Referral).where(Referral.referral_code == payload.referral_code)
+        )
+        if referral and referral.referred_id is None:
+            referral.referred_id = user.id
 
     token = _create_session(db, user, settings, previous_token)
     verification_token = tokens.issue(

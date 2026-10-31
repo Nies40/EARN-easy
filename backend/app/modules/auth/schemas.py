@@ -42,6 +42,7 @@ class SignupRequest(BaseModel):
     password: Password
     username: Username | None = None
     phone: Phone | None = None
+    referral_code: str | None = None
 
     @field_validator("username", "phone", mode="before")
     @classmethod
@@ -85,6 +86,8 @@ class PublicUser(BaseModel):
     username: str | None
     phone: str | None
     email_verified: bool
+    is_admin: bool
+    referral_code: str | None
     created_at: datetime
 
 

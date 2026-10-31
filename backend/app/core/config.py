@@ -73,6 +73,21 @@ class Settings(BaseSettings):
     email_cleanup_interval_seconds: int = Field(default=300, ge=1, le=86400)
     email_cleanup_batch_size: int = Field(default=500, ge=1, le=10000)
     email_outbox_retention_seconds: int = Field(default=604800, ge=3600, le=2592000)
+    # --- M-Pesa Daraja API ---
+    mpesa_consumer_key: str | None = None
+    mpesa_consumer_secret: str | None = None
+    mpesa_passkey: str | None = None
+    mpesa_shortcode: str | None = None
+    mpesa_environment: Literal["sandbox", "production"] = "sandbox"
+    mpesa_callback_url: str | None = None
+    # --- Paystack API ---
+    paystack_secret_key: str | None = None
+    paystack_public_key: str | None = None
+    paystack_callback_url: str | None = None
+    # --- Credits conversion rate ---
+    credits_per_ksh: int = Field(default=10, ge=1, le=10000)  # 10 credits = 1 Ksh
+    # --- Frontend / CORS ---
+    frontend_url: str = "http://localhost:3000"
 
     @field_validator("database_url")
     @classmethod
