@@ -15,10 +15,20 @@ class SecurityMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         if request.method not in {"GET", "HEAD", "OPTIONS"}:
             origin = request.headers.get("origin")
-            expected_origin = str(self.settings.app_url).rstrip("/")
-            if (
-                origin is not None and origin != expected_origin
-            ) or request.headers.get("sec-fetch-site") == "cross-site":
+            # Accept the API origin (app_url) and the frontend origin (frontend_url).
+            # CORS middleware handles browser preflight and cross-origin headers;
+            # here we only reject requests with an unknown Origin header.
+            # In development, the browser may use 127.0.0.1 or localhost interchangeably,
+            # so accept both variants of each configured origin.
+            app_origin = str(self.settings.app_url).rstrip("/")
+            frontend_origin = self.settings.frontend_url.rstrip("/")
+            allowed_origins = {app_origin, frontend_origin}
+            for o in (app_origin, frontend_origin):
+                if "localhost" in o:
+                    allowed_origins.add(o.replace("localhost", "127.0.0.1"))
+                if "127.0.0.1" in o:
+                    allowed_origins.add(o.replace("127.0.0.1", "localhost"))
+            if origin is not None and origin not in allowed_origins:
                 response = JSONResponse(
                     {"error": "Cross-origin requests are not allowed."}, 403
                 )
