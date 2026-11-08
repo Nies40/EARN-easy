@@ -13,6 +13,7 @@ from app.modules.auth.models import (  # noqa: F401
     UserSession,
 )
 from app.modules.credits.models import CreditBalance, CreditTransaction  # noqa: F401
+from app.modules.community.models import ChatMessage, ForexLesson  # noqa: F401
 from app.modules.outbox.models import EmailJob  # noqa: F401
 from app.modules.referrals.models import Referral, ReferralClick  # noqa: F401
 from app.modules.tasks.models import Task, TaskCompletion  # noqa: F401

@@ -19,6 +19,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(254), unique=True)
     username: Mapped[str | None] = mapped_column(String(30), unique=True)
     phone: Mapped[str | None] = mapped_column(String(17))
+    country_code: Mapped[str | None] = mapped_column(String(2))
     password_hash: Mapped[str] = mapped_column(String(60))
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     referral_code: Mapped[str | None] = mapped_column(String(20), unique=True)

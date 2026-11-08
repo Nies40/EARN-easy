@@ -70,6 +70,7 @@ def register(
         email=str(payload.email),
         username=payload.username,
         phone=payload.phone,
+        country_code=payload.country_code.upper() if payload.country_code else None,
         password_hash=security.hash_password(payload.password),
         referral_code=_generate_referral_code(db),
     )

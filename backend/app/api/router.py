@@ -7,6 +7,7 @@ from app.api.dependencies import get_db
 from app.modules.admin.router import router as admin_router
 from app.modules.auth.router import router as auth_router
 from app.modules.credits.router import router as credits_router
+from app.modules.community.router import router as community_router
 from app.modules.dashboard.router import router as dashboard_router
 from app.modules.referrals.router import router as referrals_router
 from app.modules.tasks.router import router as tasks_router
@@ -19,6 +20,7 @@ router.include_router(wallet_router)
 router.include_router(referrals_router)
 router.include_router(credits_router)
 router.include_router(tasks_router)
+router.include_router(community_router)
 router.include_router(admin_router)
 
 

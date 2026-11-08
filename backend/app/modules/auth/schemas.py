@@ -42,9 +42,10 @@ class SignupRequest(BaseModel):
     password: Password
     username: Username | None = None
     phone: Phone | None = None
+    country_code: Annotated[str, StringConstraints(min_length=2, max_length=2, pattern=r"^[A-Za-z]{2}$")] | None = None
     referral_code: str | None = None
 
-    @field_validator("username", "phone", mode="before")
+    @field_validator("username", "phone", "country_code", mode="before")
     @classmethod
     def normalize_optional_fields(cls, value):
         return value.strip().lower() or None if isinstance(value, str) else value
@@ -85,6 +86,7 @@ class PublicUser(BaseModel):
     email: str
     username: str | None
     phone: str | None
+    country_code: str | None = None
     email_verified: bool
     is_admin: bool
     referral_code: str | None

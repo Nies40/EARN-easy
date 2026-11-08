@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_admin_user, get_db
@@ -10,8 +11,43 @@ from app.modules.admin.schemas import (
     WithdrawalActionRequest,
 )
 from app.modules.users.models import User
+from app.modules.tasks.models import Task
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
+
+
+class TaskCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    type: str = Field(pattern=r"^(survey|simple_survey|ad|ad_view|blog|hotel_review|trivia)$")
+    title: str = Field(min_length=1, max_length=200)
+    description: str | None = Field(None, max_length=5000)
+    reward_credits: int = Field(default=10, ge=1, le=100000)
+    content_url: str | None = Field(None, max_length=500)
+    question: str | None = Field(None, max_length=5000)
+    options: list[str] | None = None
+    correct_answer: str | None = Field(None, max_length=200)
+
+
+class TaskAdminResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    type: str
+    title: str
+    reward_credits: int
+    is_active: bool
+
+
+@router.post("/tasks", response_model=TaskAdminResponse, status_code=201)
+def create_task(
+    payload: TaskCreateRequest,
+    admin: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+) -> Task:
+    task = Task(**payload.model_dump())
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    return task
 
 
 @router.get("/stats", response_model=AdminStatsResponse)

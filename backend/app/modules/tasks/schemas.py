@@ -21,7 +21,8 @@ class TaskResponse(BaseModel):
 class CompleteTaskRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    answer: str | None = Field(None, description="Answer for trivia tasks")
+    answer: str | None = Field(None, description="Survey/trivia answer")
+    submission: str | None = Field(None, max_length=10000, description="Blog or review submission")
 
 
 class TaskCompletionResponse(BaseModel):

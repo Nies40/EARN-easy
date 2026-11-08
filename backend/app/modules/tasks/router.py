@@ -43,7 +43,7 @@ def complete_task(
     db: Session = Depends(get_db),
 ) -> TaskCompletionResponse:
     try:
-        result = service.complete_task(db, user.id, task_id, payload.answer)
+        result = service.complete_task(db, user.id, task_id, payload.answer, payload.submission)
     except ValueError as error:
         status = 409 if "already completed" in str(error) else 400
         raise HTTPException(status_code=status, detail=str(error)) from error

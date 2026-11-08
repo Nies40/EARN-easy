@@ -30,7 +30,10 @@ def is_completed(db: Session, user_id: UUID, task_id: UUID) -> bool:
     ) is not None
 
 
-def complete_task(db: Session, user_id: UUID, task_id: UUID, answer: str | None = None) -> dict:
+def complete_task(
+    db: Session, user_id: UUID, task_id: UUID, answer: str | None = None,
+    submission: str | None = None,
+) -> dict:
     task = db.scalar(select(Task).where(Task.id == task_id, Task.is_active.is_(True)))
     if task is None:
         raise ValueError("Task not found.")
@@ -43,11 +46,22 @@ def complete_task(db: Session, user_id: UUID, task_id: UUID, answer: str | None 
         if answer is None or answer.strip().lower() != task.correct_answer.strip().lower():
             raise ValueError("Incorrect answer. Try again.")
 
+    if task.type in {"survey", "simple_survey"} and not (answer and answer.strip()):
+        raise ValueError("Please submit your survey answer.")
+    if task.type in {"blog", "hotel_review"} and len((submission or "").strip()) < 50:
+        raise ValueError("Please submit at least 50 characters for review.")
+    if task.type in {"ad", "ad_view"} and not (answer and answer.strip()):
+        raise ValueError("Complete the ad task and submit its confirmation code.")
+    if task.type in {"ad", "ad_view"} and task.correct_answer:
+        if answer is None or answer.strip().casefold() != task.correct_answer.strip().casefold():
+            raise ValueError("Ad confirmation code is invalid.")
+
     try:
         completion = TaskCompletion(
             user_id=user_id,
             task_id=task_id,
             credits_earned=task.reward_credits,
+            submission=(submission or answer or "").strip() or None,
         )
         db.add(completion)
         credits_service.earn_credits(

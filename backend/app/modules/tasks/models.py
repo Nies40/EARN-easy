@@ -9,12 +9,12 @@ from app.db.base import Base
 
 
 class Task(Base):
-    """A task the user can complete for credits: watch video, like photo, or answer trivia."""
+    """An earning activity such as a survey, ad view, blog, or hotel review."""
 
     __tablename__ = "tasks"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
-    type: Mapped[str] = mapped_column(String(20), index=True)  # video|photo_like|trivia
+    type: Mapped[str] = mapped_column(String(30), index=True)  # survey|ad_view|blog|hotel_review|trivia
     title: Mapped[str] = mapped_column(String(200))
     description: Mapped[str | None] = mapped_column(Text)
     reward_credits: Mapped[int] = mapped_column(Integer, default=10)
@@ -43,6 +43,7 @@ class TaskCompletion(Base):
         Uuid, ForeignKey("tasks.id", ondelete="CASCADE"), index=True
     )
     credits_earned: Mapped[int] = mapped_column(Integer)
+    submission: Mapped[str | None] = mapped_column(Text)
     completed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
