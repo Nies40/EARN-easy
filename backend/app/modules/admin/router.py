@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
@@ -10,8 +12,8 @@ from app.modules.admin.schemas import (
     AdminWithdrawalResponse,
     WithdrawalActionRequest,
 )
-from app.modules.users.models import User
 from app.modules.tasks.models import Task
+from app.modules.users.models import User
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -30,7 +32,7 @@ class TaskCreateRequest(BaseModel):
 
 class TaskAdminResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    id: str
+    id: UUID
     type: str
     title: str
     reward_credits: int

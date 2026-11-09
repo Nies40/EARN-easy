@@ -42,7 +42,9 @@ class SignupRequest(BaseModel):
     password: Password
     username: Username | None = None
     phone: Phone | None = None
-    country_code: Annotated[str, StringConstraints(min_length=2, max_length=2, pattern=r"^[A-Za-z]{2}$")] | None = None
+    country_code: Annotated[
+        str, StringConstraints(min_length=2, max_length=2, pattern=r"^[A-Za-z]{2}$")
+    ] | None = None
     referral_code: str | None = None
 
     @field_validator("username", "phone", "country_code", mode="before")
