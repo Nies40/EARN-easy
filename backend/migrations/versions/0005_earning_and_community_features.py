@@ -24,7 +24,9 @@ def upgrade() -> None:
         sa.Column("sender_id", sa.Uuid(), nullable=False),
         sa.Column("recipient_id", sa.Uuid(), nullable=False),
         sa.Column("message", sa.Text(), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.ForeignKeyConstraint(["sender_id"], ["users.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["recipient_id"], ["users.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_chat_messages")),
@@ -39,7 +41,9 @@ def upgrade() -> None:
         sa.Column("content_url", sa.String(500), nullable=True),
         sa.Column("level", sa.String(30), server_default="beginner", nullable=False),
         sa.Column("is_active", sa.Boolean(), server_default="true", nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_forex_lessons")),
     )
     op.create_index(op.f("ix_forex_lessons_is_active"), "forex_lessons", ["is_active"])
@@ -52,11 +56,47 @@ def upgrade() -> None:
         sa.column("level", sa.String()),
         sa.column("is_active", sa.Boolean()),
     )
-    op.bulk_insert(lessons, [
-        {"id": "00000000-0000-4000-8000-000000000001", "title": "Forex basics and currency pairs", "summary": "Learn how currency pairs are quoted, what bid and ask mean, and how pips and lot sizes work. This lesson is educational and does not promise earnings.", "content_url": None, "level": "beginner", "is_active": True},
-        {"id": "00000000-0000-4000-8000-000000000002", "title": "Risk management before trading", "summary": "Understand position sizing, stop losses, leverage risk, and why you should never trade money you cannot afford to lose. Practise with a demo account before considering live markets.", "content_url": None, "level": "beginner", "is_active": True},
-        {"id": "00000000-0000-4000-8000-000000000003", "title": "Reading a basic price chart", "summary": "Explore candlesticks, timeframes, support and resistance, and the limits of technical analysis. Past price movement does not predict future results.", "content_url": None, "level": "beginner", "is_active": True},
-    ])
+    op.bulk_insert(
+        lessons,
+        [
+            {
+                "id": "00000000-0000-4000-8000-000000000001",
+                "title": "Forex basics and currency pairs",
+                "summary": (
+                    "Learn how currency pairs are quoted, what bid and ask mean, and how "
+                    "pips and lot sizes work. This lesson is educational and does not "
+                    "promise earnings."
+                ),
+                "content_url": None,
+                "level": "beginner",
+                "is_active": True,
+            },
+            {
+                "id": "00000000-0000-4000-8000-000000000002",
+                "title": "Risk management before trading",
+                "summary": (
+                    "Understand position sizing, stop losses, leverage risk, and why you "
+                    "should never trade money you cannot afford to lose. Practise with a "
+                    "demo account before considering live markets."
+                ),
+                "content_url": None,
+                "level": "beginner",
+                "is_active": True,
+            },
+            {
+                "id": "00000000-0000-4000-8000-000000000003",
+                "title": "Reading a basic price chart",
+                "summary": (
+                    "Explore candlesticks, timeframes, support and resistance, and the "
+                    "limits of technical analysis. Past price movement does not predict "
+                    "future results."
+                ),
+                "content_url": None,
+                "level": "beginner",
+                "is_active": True,
+            },
+        ],
+    )
 
 
 def downgrade() -> None:
